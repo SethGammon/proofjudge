@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ProofJudge</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">EigenCloud Private Preview</p>
+          <h1>ProofJudge</h1>
+          <p class="lede">A reusable verifiable-agent runtime for judging bounty work, research briefs, and negotiation proposals.</p>
+        </div>
+        <div class="status">
+          <span>Local demo mode</span>
+          <strong>Decision artifacts include hash, identity, attestation placeholder, and signature fields.</strong>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="variants" id="variants"></aside>
+
+        <form id="judge-form" class="panel">
+          <label>
+            Bounty
+            <textarea name="bountyDescription" rows="3" required></textarea>
+          </label>
+          <label>
+            Rubric
+            <textarea name="rubric" rows="4" required></textarea>
+          </label>
+          <label>
+            Submitted Artifact
+            <textarea name="submittedArtifact" rows="7" required></textarea>
+          </label>
+          <label>
+            Submitter
+            <input name="submitter" />
+          </label>
+          <button type="submit">Judge Artifact</button>
+        </form>
+
+        <section class="artifact panel">
+          <div class="artifact-head">
+            <div>
+              <p class="eyebrow">Decision Artifact</p>
+              <h2 id="decision-title">Waiting for judgment</h2>
+            </div>
+            <span class="pill" id="decision-pill">idle</span>
+          </div>
+          <div class="audit-grid" id="audit-grid">
+            <div><span>Decision ID</span><strong>-</strong></div>
+            <div><span>Input Hash</span><strong>-</strong></div>
+            <div><span>Decision Hash</span><strong>-</strong></div>
+            <div><span>Attestation</span><strong>-</strong></div>
+          </div>
+          <button type="button" class="verify-button" id="verify-button" disabled>Verify Decision</button>
+          <div class="verification-summary" id="verification-summary" hidden></div>
+          <div class="verification" id="verification"></div>
+          <pre id="artifact-output">{}</pre>
+        </section>
+      </section>
+    </main>
+    <script src="/main.js" type="module"></script>
+  </body>
+</html>
