@@ -3,11 +3,11 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import { eigen } from "@layr-labs/ai-gateway-provider";
 import { generateText } from "ai";
-import type { Decision, DecisionArtifact, JudgeRequest, VerificationResult } from "./types.js";
+import type { AgentVariant, Decision, DecisionArtifact, JudgeRequest, VerificationResult } from "./types.js";
 import { variants } from "./variants.js";
 
 export const judgeRequestSchema = z.object({
-  variant: z.enum(["code", "research", "negotiation"]),
+  variant: z.enum(["code", "research", "negotiation", "governance"]),
   bountyDescription: z.string().min(10),
   rubric: z.string().min(10),
   submittedArtifact: z.string().min(10),
@@ -38,7 +38,70 @@ interface ScoringResult {
   model: string;
 }
 
-// ── Heuristic scorer (local dev fallback) ────────────────────────────────────
+// ── Per-variant LLM system prompts ────────────────────────────────────────────
+
+function getSystemPrompt(variant: AgentVariant): string {
+  const base = `Return ONLY valid JSON with this exact structure — no other text, no markdown fences:
+{
+  "score": <integer 0-100>,
+  "decision": "<pass|revise|fail>",
+  "confidence": <integer 35-95>,
+  "evidenceChecked": ["<specific criterion you checked>", ...],
+  "reasoning": ["<specific finding 1>", "<specific finding 2>", "<specific finding 3>"]
+}
+
+Score mapping: 72-100 → "pass" | 42-71 → "revise" | 0-41 → "fail"
+Be specific. Reference exact rubric criteria. Do not pad reasoning.`;
+
+  const prompts: Record<AgentVariant, string> = {
+    code: `You are ProofJudge Code, a precise evaluator of technical work running inside a cryptographically verified TEE. Your verdicts are signed and immutable.
+
+Evaluate code submissions against the bounty description and acceptance rubric. Assess:
+- Correctness: does it solve the stated problem including edge cases?
+- Test coverage quality: not just presence — do tests cover the specified scenarios?
+- Security posture: input validation, injection surfaces, credential handling, privilege checks
+- Rubric compliance: every criterion listed must be checked individually
+- Consistency: naming, error handling, patterns consistent with rubric requirements
+
+${base}`,
+
+    research: `You are ProofJudge Research, a rigorous evaluator of knowledge work running inside a cryptographically verified TEE. Your verdicts are signed and immutable.
+
+Evaluate research submissions using the Claims-Arguments-Evidence (CAE) framework:
+- Decompose the submission into individual claims
+- For each claim: is it backed by a cited source, or presented as an assumption?
+- Source quality: does the citation actually SUPPORT the claim, or merely mention the topic?
+- Completeness: are all rubric-specified areas covered with adequate depth?
+- Risk coverage: are limitations, competing evidence, and failure modes acknowledged?
+
+${base}`,
+
+    negotiation: `You are ProofJudge Negotiation, a neutral evaluator of negotiation proposals running inside a cryptographically verified TEE. You are not a participant in this negotiation. Your verdicts are signed and immutable.
+
+Evaluate proposals for COMPLETENESS against the stated rubric — not for who "wins":
+- Did the proposal address EVERY material term listed in the rubric?
+- Are proposed terms feasible and executable as stated?
+- Flag any rubric requirement that was ignored, vague, or one-sidedly defined
+- Note: you score completeness and rubric compliance, not advantage to either party
+
+${base}`,
+
+    governance: `You are ProofJudge Governance, a verifiable evaluator of DAO governance proposals running inside a cryptographically verified TEE. Your signed verdict is published before any vote opens.
+
+Evaluate governance proposals against the stated rubric, assessing:
+- TREASURY RISK: what percentage of treasury is at risk? Is execution reversible? Timeline clear?
+- FEASIBILITY: are milestones realistic? Is the executing party accountable?
+- ATTACK SURFACE: could this proposal be exploited via flash loan, sybil, front-running, or emergency bypass?
+- EXECUTION MECHANISM: are quorum, timelock, multisig, and fallback conditions all specified?
+- COMPLETENESS: does the proposal address every criterion in the evaluation rubric?
+
+${base}`
+  };
+
+  return prompts[variant];
+}
+
+// ── Heuristic scorer (fallback when LLM gateway unavailable) ─────────────────
 
 function scoreHeuristic(request: JudgeRequest): ScoringResult {
   const config = variants[request.variant];
@@ -85,32 +148,12 @@ function scoreHeuristic(request: JudgeRequest): ScoringResult {
 async function scoreWithLLM(request: JudgeRequest): Promise<ScoringResult> {
   const modelId = process.env.LLM_MODEL || "anthropic/claude-sonnet-4-5";
 
-  const system = `You are ProofJudge, a precise and fair work evaluator running inside a cryptographically verified execution environment. Your judgments are signed and immutable.
-
-Evaluate submitted work strictly against the bounty description and acceptance rubric. Be rigorous but fair.
-
-Return ONLY valid JSON with this exact structure — no other text, no markdown fences:
-{
-  "score": <integer 0-100>,
-  "decision": "<pass|revise|fail>",
-  "confidence": <integer 35-95>,
-  "evidenceChecked": ["<specific thing you examined>", ...],
-  "reasoning": ["<specific finding 1>", "<specific finding 2>", "<specific finding 3>"]
-}
-
-Score mapping:
-- 72-100 → "pass": meets or exceeds all rubric criteria
-- 42-71  → "revise": has merit but has specific addressable gaps
-- 0-41   → "fail": does not meet rubric requirements
-
-Be specific. Reference actual rubric criteria in your reasoning.`;
-
   const prompt = `BOUNTY DESCRIPTION:\n${request.bountyDescription}\n\nACCEPTANCE RUBRIC:\n${request.rubric}\n\nSUBMITTED WORK:\n${request.submittedArtifact}${request.submitter ? `\n\nSUBMITTER: ${request.submitter}` : ""}`;
 
   const result = await generateText({
     model: eigen(modelId),
     messages: [
-      { role: "system", content: system },
+      { role: "system", content: getSystemPrompt(request.variant) },
       { role: "user", content: prompt }
     ],
     maxOutputTokens: 800,
@@ -123,7 +166,6 @@ Be specific. Reference actual rubric criteria in your reasoning.`;
 
   const parsed = JSON.parse(jsonMatch[0]);
   const rawScore = Math.max(0, Math.min(100, Number(parsed.score) || 0));
-  // Enforce decision/score consistency regardless of what the LLM returned
   const decision: Decision = rawScore >= 72 ? "pass" : rawScore >= 42 ? "revise" : "fail";
 
   return {
@@ -140,7 +182,7 @@ Be specific. Reference actual rubric criteria in your reasoning.`;
 // ── Scorer router ─────────────────────────────────────────────────────────────
 
 async function scoreSubmission(request: JudgeRequest): Promise<ScoringResult> {
-  if (process.env.KMS_SERVER_URL) {
+  if (process.env.KMS_SERVER_URL || process.env.KMS_AUTH_JWT) {
     try {
       return await scoreWithLLM(request);
     } catch (err) {
@@ -237,16 +279,16 @@ export function verifyDecisionArtifact(artifact: DecisionArtifact): Verification
 
   const checks = [
     { label: "Schema", ok: schemaOk, detail: schemaOk ? "Decision artifact schema is recognized." : "Unexpected decision artifact schema." },
-    { label: "Submitted artifact hash", ok: submittedHashOk, detail: submittedHashOk ? "Submitted artifact hash is a SHA-256 digest." : "Submitted artifact hash is malformed." },
-    { label: "Decision artifact hash", ok: hashOk, detail: hashOk ? "Decision artifact hash matches the artifact body." : "Decision artifact hash does not match the artifact body." },
-    { label: "Signature", ok: signatureOk, detail: signatureOk ? `Signature verified in ${signature.mode} mode.` : "Signature does not match this artifact body." },
+    { label: "Submitted artifact hash", ok: submittedHashOk, detail: submittedHashOk ? "Submitted artifact hash is a valid SHA-256 digest." : "Submitted artifact hash is malformed." },
+    { label: "Decision artifact hash", ok: hashOk, detail: hashOk ? "Decision artifact hash matches the artifact body." : "Decision artifact hash does not match — artifact was modified after signing." },
+    { label: "Signature", ok: signatureOk, detail: signatureOk ? `Signature verified in ${signature.mode} mode.` : "Signature does not match this artifact body — tamper detected." },
     { label: "Deployment identity", ok: deploymentOk, detail: deploymentOk ? `${artifact.deploymentIdentity.appId} at ${artifact.deploymentIdentity.instanceIp}.` : "Deployment identity fields are missing." },
     {
       label: "Attestation status",
       ok: artifact.deploymentIdentity.attestation.mode === "eigencompute",
       detail: artifact.deploymentIdentity.attestation.mode === "eigencompute"
-        ? "EigenCompute attestation endpoint is configured."
-        : "Local demo placeholder. Deploy to EigenCompute for live attestation."
+        ? "EigenCompute TEE attestation endpoint is configured."
+        : "Demo placeholder. Deploy to EigenCompute for live attestation."
     }
   ];
 
@@ -255,8 +297,8 @@ export function verifyDecisionArtifact(artifact: DecisionArtifact): Verification
     ok: coreOk,
     status: coreOk ? "verified" : "failed",
     message: coreOk
-      ? "Decision artifact body, hash, signature, and deployment identity verified."
-      : "One or more verification checks failed. Do not rely on this decision artifact.",
+      ? "Decision artifact body, hash, signature, and deployment identity all verified."
+      : "Verification failed — artifact was modified after the verdict was signed.",
     verifiedAt: new Date().toISOString(),
     decisionArtifactHashMatch: hashOk,
     signatureValid: signatureOk,

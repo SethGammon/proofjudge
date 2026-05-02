@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createDecisionArtifact, verifyDecisionArtifact } from "../src/judge.js";
 
-const variants = ["code", "research", "negotiation"] as const;
+const variants = ["code", "research", "negotiation", "governance"] as const;
 
 for (const variant of variants) {
   const artifact = await createDecisionArtifact({

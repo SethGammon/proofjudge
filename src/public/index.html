@@ -3,67 +3,256 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ProofJudge</title>
+    <title>ProofJudge — Verifiable Work Evaluation</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <section class="hero">
-        <div>
-          <p class="eyebrow">EigenCloud Private Preview</p>
-          <h1>ProofJudge</h1>
-          <p class="lede">A reusable verifiable-agent runtime for judging bounty work, research briefs, and negotiation proposals.</p>
+
+    <!-- ═══════════════════════ HUB VIEW ═══════════════════════ -->
+    <div id="hub">
+      <canvas id="hero-canvas"></canvas>
+
+      <header class="hub-header">
+        <div class="hub-brand">
+          <span class="brand-hex">⬡</span>
+          <span class="brand-name">ProofJudge</span>
         </div>
-        <div class="status">
-          <span>Local demo mode</span>
-          <strong>Decision artifacts include hash, identity, attestation placeholder, and signature fields.</strong>
+        <div class="hub-meta">
+          <span class="hub-badge">EigenCloud Sepolia</span>
+        </div>
+      </header>
+
+      <section class="hub-hero">
+        <p class="hub-eyebrow">EigenCompute Private Preview · TEE-Attested</p>
+        <h1 class="hub-title">ProofJudge</h1>
+        <p class="hub-lede">The verifiable work evaluation layer for the decentralized economy.<br>Every judgment is signed, attested, and tamper-evident.</p>
+        <div class="hub-pills">
+          <span class="pill">HMAC-Signed</span>
+          <span class="pill">TEE-Attested</span>
+          <span class="pill">Audit-Ready</span>
+          <span class="pill">Tamper-Evident</span>
         </div>
       </section>
 
-      <section class="workspace">
-        <aside class="variants" id="variants"></aside>
+      <section class="hub-agents">
+        <div class="agent-card" data-variant="code" style="--accent: #00ff9d">
+          <div class="card-icon">{ }</div>
+          <div class="card-body">
+            <h2 class="card-name">ProofJudge Code</h2>
+            <p class="card-tagline">Verifiable review for code bounties and PRs.</p>
+            <p class="card-problem">AI slop floods bug bounty inboxes — curl ended HackerOne after 8× more reports with only 5% real. No signed audit trail exists.</p>
+            <ul class="card-bullets">
+              <li>Rubric-based scoring per criterion</li>
+              <li>Security surface check</li>
+              <li>Signed reasoning trace</li>
+            </ul>
+          </div>
+          <a href="/agents/code" class="card-cta">Open Agent <span class="cta-arrow">→</span></a>
+        </div>
 
-        <form id="judge-form" class="panel">
-          <label>
-            Bounty
-            <textarea name="bountyDescription" rows="3" required></textarea>
-          </label>
-          <label>
-            Rubric
-            <textarea name="rubric" rows="4" required></textarea>
-          </label>
-          <label>
-            Submitted Artifact
-            <textarea name="submittedArtifact" rows="7" required></textarea>
-          </label>
-          <label>
-            Submitter
-            <input name="submitter" />
-          </label>
-          <button type="submit">Judge Artifact</button>
+        <div class="agent-card" data-variant="research" style="--accent: #38bdf8">
+          <div class="card-icon">◎</div>
+          <div class="card-body">
+            <h2 class="card-name">ProofJudge Research</h2>
+            <p class="card-tagline">Claims require sources. Sources require verification.</p>
+            <p class="card-problem">17–33% of AI legal research tools hallucinate citations. NeurIPS 2025 had 100+ fabricated citations in accepted papers.</p>
+            <ul class="card-bullets">
+              <li>CAE framework: Claims, Arguments, Evidence</li>
+              <li>Source support vs. mere mention</li>
+              <li>Risk and assumption separation</li>
+            </ul>
+          </div>
+          <a href="/agents/research" class="card-cta">Open Agent <span class="cta-arrow">→</span></a>
+        </div>
+
+        <div class="agent-card" data-variant="negotiation" style="--accent: #fbbf24">
+          <div class="card-icon">⚖</div>
+          <div class="card-body">
+            <h2 class="card-name">ProofJudge Negotiation</h2>
+            <p class="card-tagline">Neutral ground. Both parties can verify.</p>
+            <p class="card-problem">Harvey, Ironclad, ContractPodAi — all serve one side. There is no neutral evaluator both parties can trust.</p>
+            <ul class="card-bullets">
+              <li>Completeness scoring: every term addressed?</li>
+              <li>Party-neutral — not deployed by either side</li>
+              <li>Same signed rubric for both parties</li>
+            </ul>
+          </div>
+          <a href="/agents/negotiation" class="card-cta">Open Agent <span class="cta-arrow">→</span></a>
+        </div>
+
+        <div class="agent-card" data-variant="governance" style="--accent: #c084fc">
+          <div class="card-icon">⬡</div>
+          <div class="card-body">
+            <h2 class="card-name">ProofJudge Governance</h2>
+            <p class="card-tagline">Proposals verified before votes are cast.</p>
+            <p class="card-problem">Beanstalk lost $182M in a flash loan attack. Compound lost $25M to coordinated manipulation. Signed risk assessment before any vote opens.</p>
+            <ul class="card-bullets">
+              <li>Treasury risk and attack vector analysis</li>
+              <li>Feasibility and execution mechanism check</li>
+              <li>Signed verdict published before vote opens</li>
+            </ul>
+          </div>
+          <a href="/agents/governance" class="card-cta">Open Agent <span class="cta-arrow">→</span></a>
+        </div>
+      </section>
+
+      <section class="hub-flow">
+        <h2 class="flow-title">How Verification Works</h2>
+        <div class="flow-steps">
+          <div class="flow-step">
+            <span class="step-num">01</span>
+            <h3>Submit Work</h3>
+            <p>Provide the task, rubric, and submitted artifact to be evaluated.</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <span class="step-num">02</span>
+            <h3>Judge Inside TEE</h3>
+            <p>Evaluation runs inside an EigenCompute SEV-SNP trusted execution environment.</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <span class="step-num">03</span>
+            <h3>Signed Artifact</h3>
+            <p>A DecisionArtifact is produced with HMAC signature, hash, and attestation data.</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <span class="step-num">04</span>
+            <h3>Verify Anytime</h3>
+            <p>Anyone can verify the hash match and signature. Tampering is cryptographically detectable.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="hub-footer">
+        <p>Built on <strong>EigenCloud</strong> · EigenCompute TEE · HMAC-SHA256 Signatures · <a href="https://verify-sepolia.eigencloud.xyz" target="_blank" rel="noopener">EigenVerify ↗</a></p>
+      </footer>
+    </div>
+
+    <!-- ═══════════════════════ AGENT VIEW ═══════════════════════ -->
+    <div id="agent-view" hidden>
+
+      <nav class="agent-nav">
+        <a href="/" class="back-link">← All Agents</a>
+        <div class="agent-nav-right">
+          <div class="mode-toggle" id="mode-toggle">
+            <button class="mode-btn active" id="btn-demo" type="button">Demo</button>
+            <button class="mode-btn" id="btn-live" type="button">Live</button>
+          </div>
+          <div class="agent-nav-pills" id="agent-nav-pills">
+            <a href="/agents/code" class="nav-pill" data-variant="code">Code</a>
+            <a href="/agents/research" class="nav-pill" data-variant="research">Research</a>
+            <a href="/agents/negotiation" class="nav-pill" data-variant="negotiation">Negotiation</a>
+            <a href="/agents/governance" class="nav-pill" data-variant="governance">Governance</a>
+          </div>
+        </div>
+      </nav>
+
+      <div class="agent-header" id="agent-header">
+        <div class="agent-icon-large" id="agent-icon-large">{ }</div>
+        <div class="agent-header-text">
+          <h1 class="agent-title" id="agent-title">ProofJudge</h1>
+          <p class="agent-tagline-text" id="agent-tagline-text"></p>
+        </div>
+        <div class="attestation-badge" id="attestation-badge">
+          <span class="attest-dot"></span>
+          <span id="attest-label">Checking attestation…</span>
+        </div>
+      </div>
+
+      <div class="problem-strip" id="problem-strip"></div>
+
+      <div class="workspace">
+
+        <!-- Form panel -->
+        <form id="judge-form" class="form-panel">
+          <div class="field-group">
+            <label class="field-label" for="bountyDescription" id="label-bounty">Task Description</label>
+            <textarea id="bountyDescription" name="bountyDescription" class="field-textarea" rows="3" placeholder="Describe the task or bounty…" required minlength="10"></textarea>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="rubric" id="label-rubric">Acceptance Rubric</label>
+            <textarea id="rubric" name="rubric" class="field-textarea" rows="4" placeholder="List the criteria that must be met…" required minlength="10"></textarea>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="submittedArtifact" id="label-artifact">Submitted Work</label>
+            <textarea id="submittedArtifact" name="submittedArtifact" class="field-textarea" rows="7" placeholder="Paste the submitted work to evaluate…" required minlength="10"></textarea>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="submitter">Submitter</label>
+            <input id="submitter" name="submitter" class="field-input" type="text" placeholder="Address or handle (optional)" />
+          </div>
+          <button type="submit" id="submit-btn" class="btn-judge">
+            <span class="btn-text" id="btn-text">Judge Submission</span>
+          </button>
         </form>
 
-        <section class="artifact panel">
-          <div class="artifact-head">
-            <div>
-              <p class="eyebrow">Decision Artifact</p>
-              <h2 id="decision-title">Waiting for judgment</h2>
+        <!-- Verdict panel -->
+        <div class="verdict-panel" id="verdict-panel">
+
+          <div class="verdict-idle" id="verdict-idle">
+            <div class="idle-hex">⬡</div>
+            <p class="idle-text">Submit a work product to receive a cryptographically signed verdict.</p>
+            <p class="idle-sub">Runs inside EigenCompute TEE · HMAC-SHA256</p>
+          </div>
+
+          <div class="verdict-content" id="verdict-content" hidden>
+
+            <div class="score-area">
+              <svg class="score-ring" viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="ring-track" cx="60" cy="60" r="52" />
+                <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="52" />
+              </svg>
+              <div class="score-center">
+                <span class="score-num" id="score-num">--</span>
+                <span class="score-sub">/ 100</span>
+              </div>
+              <div class="decision-badge" id="decision-badge">PENDING</div>
             </div>
-            <span class="pill" id="decision-pill">idle</span>
+
+            <div class="confidence-row">
+              <span class="conf-label">Confidence</span>
+              <div class="conf-bar"><div class="conf-fill" id="conf-fill"></div></div>
+              <span class="conf-val" id="conf-val">--</span>
+            </div>
+
+            <div class="reasoning-block">
+              <h3 class="block-title">Reasoning</h3>
+              <ul class="reasoning-list" id="reasoning-list"></ul>
+            </div>
+
+            <div class="audit-block" id="audit-block"></div>
+
+            <button class="btn-verify" id="verify-btn" type="button" disabled>
+              Verify This Decision
+            </button>
+            <div class="verify-result" id="verify-result" hidden></div>
           </div>
-          <div class="audit-grid" id="audit-grid">
-            <div><span>Decision ID</span><strong>-</strong></div>
-            <div><span>Input Hash</span><strong>-</strong></div>
-            <div><span>Decision Hash</span><strong>-</strong></div>
-            <div><span>Attestation</span><strong>-</strong></div>
+
+        </div>
+      </div>
+
+      <!-- Tamper Demo -->
+      <div class="tamper-section" id="tamper-section" hidden>
+        <div class="tamper-inner">
+          <div class="tamper-header">
+            <h2 class="tamper-title">Tamper Resistance Test</h2>
+            <p class="tamper-desc">ProofJudge decisions are cryptographically sealed. Any modification to the artifact — even a single byte — breaks the hash and makes tampering detectable. Watch it happen live.</p>
           </div>
-          <button type="button" class="verify-button" id="verify-button" disabled>Verify Decision</button>
-          <div class="verification-summary" id="verification-summary" hidden></div>
-          <div class="verification" id="verification"></div>
-          <pre id="artifact-output">{}</pre>
-        </section>
-      </section>
-    </main>
+          <button class="btn-tamper" id="tamper-btn" type="button">Run Tamper Test</button>
+          <div class="tamper-result" id="tamper-result" hidden></div>
+        </div>
+      </div>
+
+      <!-- Raw artifact -->
+      <details class="raw-details">
+        <summary class="raw-summary">Raw Decision Artifact <span class="raw-badge">JSON</span></summary>
+        <pre class="raw-pre" id="artifact-pre">{}</pre>
+      </details>
+
+    </div>
+
     <script src="/main.js" type="module"></script>
   </body>
 </html>

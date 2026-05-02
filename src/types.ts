@@ -1,4 +1,4 @@
-export type AgentVariant = "code" | "research" | "negotiation";
+export type AgentVariant = "code" | "research" | "negotiation" | "governance";
 
 export type Decision = "pass" | "fail" | "revise";
 
