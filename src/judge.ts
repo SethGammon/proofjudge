@@ -1,7 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { createEigenGateway } from "@layr-labs/ai-gateway-provider";
+import { eigen } from "@layr-labs/ai-gateway-provider";
 import { generateText } from "ai";
 import type { Decision, DecisionArtifact, JudgeRequest, VerificationResult } from "./types.js";
 import { variants } from "./variants.js";
@@ -83,17 +83,7 @@ function scoreHeuristic(request: JudgeRequest): ScoringResult {
 // ── LLM scorer (EigenCompute with Eigen AI Gateway) ──────────────────────────
 
 async function scoreWithLLM(request: JudgeRequest): Promise<ScoringResult> {
-  const gatewayURL = process.env.EIGEN_GATEWAY_URL || "https://ai-gateway-dev.eigencloud.xyz";
   const modelId = process.env.LLM_MODEL || "anthropic/claude-sonnet-4-5";
-
-  const gateway = createEigenGateway({
-    baseURL: gatewayURL,
-    attestConfig: {
-      kmsServerURL: process.env.KMS_SERVER_URL!,
-      kmsPublicKey: process.env.KMS_PUBLIC_KEY!,
-      audience: gatewayURL
-    }
-  });
 
   const system = `You are ProofJudge, a precise and fair work evaluator running inside a cryptographically verified execution environment. Your judgments are signed and immutable.
 
@@ -118,7 +108,7 @@ Be specific. Reference actual rubric criteria in your reasoning.`;
   const prompt = `BOUNTY DESCRIPTION:\n${request.bountyDescription}\n\nACCEPTANCE RUBRIC:\n${request.rubric}\n\nSUBMITTED WORK:\n${request.submittedArtifact}${request.submitter ? `\n\nSUBMITTER: ${request.submitter}` : ""}`;
 
   const result = await generateText({
-    model: gateway(modelId),
+    model: eigen(modelId),
     messages: [
       { role: "system", content: system },
       { role: "user", content: prompt }
