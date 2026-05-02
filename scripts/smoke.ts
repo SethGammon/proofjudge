@@ -4,7 +4,7 @@ import { createDecisionArtifact, verifyDecisionArtifact } from "../src/judge.js"
 const variants = ["code", "research", "negotiation"] as const;
 
 for (const variant of variants) {
-  const artifact = createDecisionArtifact({
+  const artifact = await createDecisionArtifact({
     variant,
     bountyDescription: "Evaluate a serious private-preview agent submission.",
     rubric: "Must include tests, evidence, risks, constraints, and a clear summary.",

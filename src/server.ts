@@ -22,10 +22,10 @@ app.get("/api/variants", (_req, res) => {
   res.json({ variants: variantList });
 });
 
-app.post("/api/judge", (req, res) => {
+app.post("/api/judge", async (req, res) => {
   try {
     const request = judgeRequestSchema.parse(req.body);
-    res.json({ artifact: createDecisionArtifact(request) });
+    res.json({ artifact: await createDecisionArtifact(request) });
   } catch (error) {
     if (error instanceof ZodError) {
       res.status(400).json({ error: "Invalid judge request", details: error.issues });

@@ -12,6 +12,8 @@
     "check": "npm run build && npm run smoke"
   },
   "dependencies": {
+    "@layr-labs/ai-gateway-provider": "^1.0.1",
+    "ai": "^6.0.174",
     "express": "^4.19.2",
     "nanoid": "^5.0.7",
     "zod": "^3.23.8"
