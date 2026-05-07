@@ -25,6 +25,13 @@
   --motion-proof: 700ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-verify: cubic-bezier(0.22, 1, 0.36, 1);
+  --topbar-height: 70px;
+  --rail-width: clamp(184px, 18vw, 232px);
+  --receipt-width: clamp(280px, 24vw, 318px);
+  --shell-height: calc(100svh - var(--topbar-height));
+  --zone-pad: clamp(16px, 2vw, 26px);
+  --header-canvas-height: clamp(142px, 20svh, 196px);
+  --packet-field-height: clamp(108px, 12svh, 136px);
 }
 
 *,
@@ -473,7 +480,7 @@ body:has(.entry-layer:not([hidden])) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 70px;
+  min-height: var(--topbar-height);
   padding: 12px 24px;
   border-bottom: 1px solid var(--line);
   background: rgba(10, 11, 10, 0.88);
@@ -595,16 +602,24 @@ button:disabled {
 
 .console-grid {
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr) 318px;
-  min-height: calc(100vh - 70px);
+  grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--receipt-width);
+  min-height: var(--shell-height);
+}
+
+.app-shell[data-motion="settling"] .workbench {
+  pointer-events: none;
+}
+
+.workbench.motion-enter {
+  animation: surface-enter 180ms var(--ease-verify) both;
 }
 
 .case-rail,
 .receipt-rail {
   position: sticky;
-  top: 70px;
+  top: var(--topbar-height);
   align-self: start;
-  min-height: calc(100vh - 70px);
+  min-height: var(--shell-height);
   overflow: visible;
   border-right: 1px solid var(--line);
   background: #0d100d;
@@ -655,7 +670,8 @@ button:disabled {
   font-size: 11px;
 }
 
-.case-rail .rail-note {
+.case-rail .rail-note,
+.case-rail .demo-queue {
   display: none;
 }
 
@@ -745,7 +761,7 @@ button:disabled {
 
 .workbench {
   min-width: 0;
-  padding: clamp(16px, 2vw, 26px);
+  padding: var(--zone-pad);
 }
 
 .surface-tabs {
@@ -759,7 +775,7 @@ button:disabled {
 .tab.active {
   color: #071008;
   border-color: transparent;
-  background: var(--accent);
+  background: var(--text);
 }
 
 .view-panel {
@@ -816,9 +832,11 @@ h2 {
 
 .settlement-gate,
 .receipt-settlement {
-  border: 1px solid var(--line);
+  border: 1px solid rgba(230, 235, 225, 0.16);
   border-radius: var(--radius);
-  background: var(--bg-panel);
+  background:
+    linear-gradient(180deg, rgba(237, 242, 234, 0.045), transparent 45%),
+    #101210;
   padding: 16px;
 }
 
@@ -866,8 +884,41 @@ h2 {
   background: rgba(255, 107, 107, 0.08);
 }
 
-.identity-strip {
+.gate-checks {
   display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.gate-checks span {
+  position: relative;
+  padding-left: 14px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.gate-checks span::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.gate-checks.pending span::before {
+  background: var(--dim);
+}
+
+.identity-strip {
+  display: none;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 16px;
@@ -948,7 +999,7 @@ h2 {
 }
 
 .app-shell[data-receipt="pending"] .workspace-grid {
-  grid-template-columns: minmax(0, 920px);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .app-shell[data-receipt="pending"] .evidence-panel,
@@ -957,8 +1008,126 @@ h2 {
   display: none;
 }
 
+.app-shell[data-receipt="pending"] .identity-strip,
+.app-shell[data-receipt="pending"] .case-rail .rail-note,
+.app-shell[data-receipt="pending"] .case-rail .demo-queue,
+.app-shell[data-receipt="pending"] .receipt-rail {
+  display: none;
+}
+
+.app-shell[data-receipt="pending"] .console-grid {
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  height: var(--shell-height);
+  min-height: var(--shell-height);
+  overflow: hidden;
+}
+
+.app-shell[data-receipt="pending"] .case-rail {
+  min-height: var(--shell-height);
+  overflow: hidden;
+}
+
+.app-shell[data-receipt="pending"] .workbench {
+  display: flex;
+  flex-direction: column;
+  height: var(--shell-height);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell[data-receipt="pending"] .surface-tabs {
+  flex: 0 0 auto;
+}
+
+.app-shell[data-receipt="pending"] #view-evaluate.view-panel.active {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell[data-receipt="pending"] .panel-header {
+  grid-template-columns: minmax(0, 1fr) clamp(236px, 22vw, 280px);
+  align-items: start;
+  min-height: var(--header-canvas-height);
+  margin-bottom: clamp(10px, 1.5svh, 16px);
+}
+
+.app-shell[data-receipt="pending"] .panel-header > div:first-child {
+  align-self: center;
+}
+
+.app-shell[data-receipt="pending"] .settlement-gate {
+  align-self: start;
+  min-height: 0;
+}
+
+.app-shell[data-receipt="pending"] .proof-stepper {
+  margin: 8px 0 clamp(10px, 1.6svh, 18px);
+  min-height: 28px;
+  overflow: hidden;
+}
+
+.app-shell[data-receipt="pending"] .workspace-grid {
+  min-height: 0;
+  align-items: stretch;
+}
+
 .app-shell[data-receipt="pending"] .case-form {
-  max-width: 920px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  max-width: none;
+  padding: 14px;
+  align-self: start;
+  align-content: start;
+  overflow: hidden;
+}
+
+.app-shell[data-receipt="pending"] .case-form .form-toolbar,
+.app-shell[data-receipt="pending"] .case-form .field:nth-of-type(4),
+.app-shell[data-receipt="pending"] .case-form .primary-button {
+  grid-column: 1 / -1;
+}
+
+.app-shell[data-receipt="pending"] .case-form .primary-button {
+  border-color: rgba(237, 242, 234, 0.18);
+  background: var(--text);
+  box-shadow: none;
+  color: #071008;
+}
+
+.app-shell[data-receipt="pending"] .case-form .field {
+  margin: 0;
+}
+
+.app-shell[data-receipt="pending"] .case-form .field:has(textarea) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: calc(var(--packet-field-height) + 25px);
+  min-height: calc(var(--packet-field-height) + 25px);
+  max-height: calc(var(--packet-field-height) + 25px);
+}
+
+.app-shell[data-receipt="pending"] .case-form textarea {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  resize: none;
+}
+
+.app-shell[data-receipt="pending"] #rubric,
+.app-shell[data-receipt="pending"] #submittedArtifact {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+
+.app-shell[data-receipt="pending"] #submitter {
+  min-height: 42px;
 }
 
 .case-form,
@@ -1009,12 +1178,14 @@ input {
   background: #0b0d0b;
   color: var(--text);
   padding: 11px 12px;
-  resize: vertical;
+  resize: none;
   outline: none;
 }
 
 textarea {
   min-height: 110px;
+  max-height: 240px;
+  overflow: auto;
 }
 
 #rubric {
@@ -1494,6 +1665,15 @@ input:focus,
   }
 }
 
+@keyframes surface-enter {
+  from {
+    opacity: 0.86;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes row-in {
   from {
     opacity: 0;
@@ -1552,6 +1732,40 @@ input:focus,
 
   .receipt-facts {
     margin: 0;
+  }
+}
+
+@media (max-height: 900px) and (min-width: 901px) {
+  :root {
+    --topbar-height: 64px;
+    --zone-pad: 16px;
+    --header-canvas-height: 136px;
+    --packet-field-height: 108px;
+  }
+
+  .topbar {
+    padding-block: 8px;
+  }
+
+  .surface-tabs {
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 2.7vw, 38px);
+  }
+
+  .panel-header p:not(.eyebrow) {
+    margin-top: 8px;
+  }
+
+  .settlement-gate {
+    padding: 14px;
+  }
+
+  .gate-checks {
+    margin-top: 10px;
+    padding-top: 10px;
   }
 }
 
@@ -1635,6 +1849,52 @@ input:focus,
 
   .entry-pipeline {
     flex-wrap: wrap;
+  }
+
+  .app-shell[data-receipt="pending"] .console-grid {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: var(--shell-height);
+    overflow: visible;
+  }
+
+  .app-shell[data-receipt="pending"] .workbench {
+    height: auto;
+    overflow: visible;
+  }
+
+  .app-shell[data-receipt="pending"] #view-evaluate.view-panel.active {
+    display: block;
+    overflow: visible;
+  }
+
+  .app-shell[data-receipt="pending"] .panel-header {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .app-shell[data-receipt="pending"] .panel-header > div:first-child,
+  .app-shell[data-receipt="pending"] .settlement-gate {
+    align-self: start;
+  }
+
+  .app-shell[data-receipt="pending"] .case-form {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell[data-receipt="pending"] .case-form textarea,
+  .app-shell[data-receipt="pending"] #rubric,
+  .app-shell[data-receipt="pending"] #submittedArtifact {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .app-shell[data-receipt="pending"] .case-form .field:has(textarea) {
+    height: 118px;
+    min-height: 118px;
+    max-height: 118px;
   }
 }
 

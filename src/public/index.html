@@ -28,7 +28,7 @@
       <div class="entry-content">
         <div class="entry-mark">EigenCloud Agent Private Preview</div>
         <h1>ProofJudge</h1>
-        <p>Verifiable acceptance for autonomous work. Every verdict becomes a signed settlement receipt.</p>
+        <p>Signed acceptance for autonomous work. Evaluate agent output, seal a verdict, and produce a verifiable settlement receipt.</p>
 
         <div class="entry-actions">
           <button class="primary-button" type="button" id="enter-console-btn">Enter Console</button>
@@ -47,16 +47,17 @@
           <i></i>
           <span>Evaluation</span>
           <i></i>
-          <span>Signed Receipt</span>
+          <span>Verdict</span>
+          <i></i>
+          <span>Receipt</span>
           <i></i>
           <span>Settlement</span>
         </div>
 
         <div class="entry-status-strip">
           <span>EigenCompute Mainnet Alpha</span>
-          <span>4 attested judges online</span>
-          <span>LLM mode active</span>
-          <span>Decision artifacts verifiable</span>
+          <span>4 judges online</span>
+          <span>Artifacts verifiable</span>
         </div>
       </div>
     </section>
@@ -67,7 +68,7 @@
           <span class="brand-mark">PJ</span>
           <span>
             <strong>ProofJudge</strong>
-            <small>Verifiable acceptance for autonomous work.</small>
+            <small>Signed acceptance for autonomous work.</small>
           </span>
         </a>
 
@@ -79,7 +80,7 @@
         </div>
       </header>
 
-      <div class="console-grid">
+      <div class="console-grid" id="console-grid">
         <aside class="case-rail" aria-label="Work cases">
           <div class="rail-heading">
             <span>Cases</span>
@@ -94,17 +95,17 @@
           <button class="case-card" type="button" data-variant="research">
             <span class="case-kicker">Use Case</span>
             <strong>Research Deliverable</strong>
-            <small>Check claims, sources, caveats.</small>
+            <small>Accept, reject, or flag unsupported claims.</small>
           </button>
           <button class="case-card" type="button" data-variant="negotiation">
             <span class="case-kicker">Use Case</span>
             <strong>Deal Terms</strong>
-            <small>Confirm required constraints.</small>
+            <small>Check required constraints before agreement.</small>
           </button>
           <button class="case-card" type="button" data-variant="governance">
             <span class="case-kicker">Use Case</span>
             <strong>Governance Preflight</strong>
-            <small>Surface vote and treasury risk.</small>
+            <small>Surface voting, treasury, and execution risk.</small>
           </button>
 
           <div class="rail-note">
@@ -161,10 +162,10 @@
 
         <main class="workbench">
           <nav class="surface-tabs" aria-label="Console surfaces">
-            <button class="tab active" type="button" data-view="evaluate">Evaluate</button>
-            <button class="tab" type="button" data-view="verify">Verify Receipt</button>
-            <button class="tab" type="button" data-view="identity">Agent Identity</button>
+            <button class="tab active" type="button" data-view="evaluate">Workbench</button>
             <button class="tab" type="button" data-view="receipts">Receipts</button>
+            <button class="tab" type="button" data-view="identity">Agents</button>
+            <button class="tab" type="button" data-view="verify">Verifier</button>
             <button class="tab" type="button" data-view="demo">Demo</button>
           </nav>
 
@@ -178,9 +179,9 @@
                 </p>
               </div>
               <div class="settlement-gate" id="settlement-gate">
-                <span class="gate-label">Settlement Gate</span>
+                <span class="gate-label">Decision Receipt</span>
                 <strong>Awaiting verdict</strong>
-                <small>Generate a signed receipt to decide release, hold, reject, or appeal.</small>
+                <small>Input hash, evidence check, signature, and settlement action are pending.</small>
               </div>
             </div>
 

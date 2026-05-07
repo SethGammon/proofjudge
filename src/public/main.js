@@ -32,7 +32,7 @@ const META = {
     accent: "#37d67a",
     caseType: "Code Bounty",
     title: "Judge a code bounty.",
-    copy: "Load the demo case, generate a signed verdict, then verify the settlement receipt.",
+    copy: "Evaluate the submitted fix against the bounty terms, then seal the result as a verifiable receipt.",
     labels: {
       bounty: "Task Terms",
       rubric: "Acceptance Rubric",
@@ -43,7 +43,7 @@ const META = {
     accent: "#5bb8ff",
     caseType: "Research Deliverable",
     title: "Accept research with evidence.",
-    copy: "Check whether claims, assumptions, sources, and caveats satisfy the promised evidence standard.",
+    copy: "Accept, reject, or flag unsupported claims against the promised evidence standard.",
     labels: {
       bounty: "Research Objective",
       rubric: "Evidence Standard",
@@ -54,7 +54,7 @@ const META = {
     accent: "#f0b84a",
     caseType: "Deal Terms",
     title: "Check deal-term compliance.",
-    copy: "Compare a proposal against required business terms and surface exceptions that block acceptance.",
+    copy: "Check required constraints before agreement and surface exceptions that block acceptance.",
     labels: {
       bounty: "Deal Context",
       rubric: "Required Terms",
@@ -65,7 +65,7 @@ const META = {
     accent: "#b692ff",
     caseType: "Governance Preflight",
     title: "Preflight a governance vote.",
-    copy: "Check proposal completeness, treasury exposure, execution controls, and obvious risk before a vote opens.",
+    copy: "Surface voting, treasury, and execution risk before a proposal reaches settlement.",
     labels: {
       bounty: "DAO / Protocol Context",
       rubric: "Governance Risk Rubric",
@@ -94,9 +94,12 @@ let currentView = "evaluate";
 let currentArtifact = null;
 let variantConfigs = {};
 let guidedRunning = false;
+let transitionChain = Promise.resolve();
 
 const refs = {
   appShell: document.getElementById("app-shell"),
+  consoleGrid: document.getElementById("console-grid"),
+  workbench: document.querySelector(".workbench"),
   entryLayer: document.getElementById("entry-layer"),
   skipEntryBtn: document.getElementById("skip-entry-btn"),
   enterConsoleBtn: document.getElementById("enter-console-btn"),
@@ -153,19 +156,22 @@ const refs = {
 };
 
 document.querySelectorAll("[data-variant]").forEach((button) => {
-  button.addEventListener("click", () => selectVariant(button.dataset.variant, { push: true }));
+  button.addEventListener("click", () => {
+    selectVariant(button.dataset.variant, { push: true });
+  });
 });
 
 document.querySelectorAll("[data-view]").forEach((button) => {
-  button.addEventListener("click", () => setView(button.dataset.view, { push: true }));
+  button.addEventListener("click", () => {
+    setView(button.dataset.view, { push: true });
+  });
 });
 
 document.querySelectorAll("[data-preview-demo]").forEach((button) => {
   button.addEventListener("click", async () => {
     enterConsole();
-    selectVariant(button.dataset.previewDemo, { push: true });
-    await loadDemo(button.dataset.previewDemo);
-    setView("evaluate", { push: true });
+    await selectVariant(button.dataset.previewDemo, { push: true, loadDemo: true });
+    await setView("evaluate", { push: true });
     updateGuidedStatus("Preview loaded");
   });
 });
@@ -321,8 +327,8 @@ async function init() {
     variantConfigs = {};
   }
 
-  route();
-  loadDemo(currentVariant);
+  await route({ transition: false });
+  await loadDemo(currentVariant, { transition: false });
   pingRuntime();
   if (window.location.pathname.startsWith("/agents/") || sessionStorage.getItem("proofjudge.entry.dismissed") === "true") {
     refs.entryLayer.hidden = true;
@@ -343,14 +349,13 @@ async function runGuidedDemo(variant = "code") {
   if (!META[variant] || guidedRunning) return;
   guidedRunning = true;
   enterConsole();
-  selectVariant(variant, { push: true });
-  setView("demo", { push: true });
+  await selectVariant(variant, { push: true, loadDemo: true });
+  await setView("demo", { push: true });
   updateGuidedStatus(`Loading ${APP_REGISTRY[variant].label}`);
 
   try {
-    await loadDemo(variant);
     await wait(prefersReducedMotion() ? 20 : 260);
-    setView("evaluate", { push: true });
+    await setView("evaluate", { push: true });
 
     await spotlightField("bountyDescription", "Acceptance terms locked");
     await spotlightField("rubric", "Rubric checks ready");
@@ -383,7 +388,7 @@ function resetGuidedDemo() {
   clearSpotlights();
   resetReceipt();
   resetVerification();
-  loadDemo(currentVariant);
+  loadDemo(currentVariant, { transition: false });
   setView("evaluate", { push: true });
   updateGuidedStatus("Reset");
 }
@@ -406,83 +411,143 @@ function updateGuidedStatus(status) {
   refs.guidedStatus.textContent = status;
 }
 
-function route() {
+function transitionSurface(update, options = {}) {
+  const scope = options.scope ?? refs.workbench ?? refs.consoleGrid ?? refs.appShell;
+  const run = async () => {
+    if (options.instant || prefersReducedMotion() || !scope) {
+      await update();
+      return;
+    }
+
+    refs.appShell.dataset.motion = "settling";
+    await update();
+    scope.classList.remove("motion-enter");
+    scope.getBoundingClientRect();
+    scope.classList.add("motion-enter");
+    try {
+      await wait(180);
+    } finally {
+      scope.classList.remove("motion-enter");
+      delete refs.appShell.dataset.motion;
+    }
+  };
+
+  transitionChain = transitionChain.catch(() => {}).then(run);
+  return transitionChain;
+}
+
+function route(options = {}) {
   const match = window.location.pathname.match(/^\/agents\/(\w+)$/);
   const variant = match && META[match[1]] ? match[1] : "code";
   const hashView = window.location.hash.replace("#", "");
   const view = document.querySelector(`[data-view="${hashView}"]`) ? hashView : currentView;
 
-  selectVariant(variant, { push: false, preserveArtifact: variant === currentVariant });
-  setView(view, { push: false });
+  const update = async () => {
+    await selectVariant(variant, {
+      push: false,
+      preserveArtifact: variant === currentVariant,
+      transition: false
+    });
+    await setView(view, { push: false, transition: false });
+  };
+
+  return options.transition === false ? update() : transitionSurface(update);
 }
 
-function selectVariant(variant, options = {}) {
+async function selectVariant(variant, options = {}) {
   if (!META[variant]) return;
   const changed = currentVariant !== variant;
   currentVariant = variant;
   const meta = META[variant];
   const app = APP_REGISTRY[variant];
+  let demoData = null;
 
-  document.documentElement.style.setProperty("--accent", meta.accent);
-  document.querySelectorAll(".case-card").forEach((button) => {
-    button.classList.toggle("active", button.dataset.variant === variant);
-  });
-  document.querySelectorAll(".queue-card").forEach((card) => {
-    card.classList.toggle("active", card.dataset.demoCard === variant);
-  });
-
-  refs.caseType.textContent = meta.caseType;
-  refs.caseTitle.textContent = meta.title;
-  refs.caseCopy.textContent = meta.copy;
-  refs.labelBounty.textContent = meta.labels.bounty;
-  refs.labelRubric.textContent = meta.labels.rubric;
-  refs.labelArtifact.textContent = meta.labels.artifact;
-  refs.configuredAppId.textContent = shortAddress(app.appId);
-  refs.configuredVerifyLink.href = app.verifyUrl;
-  refs.headerVerifyLink.href = app.verifyUrl;
-  refs.railVerifyLink.href = app.verifyUrl;
-
-  renderIdentityStrip();
-  renderRegistry();
-
-  if (changed && !options.preserveArtifact) {
-    currentArtifact = null;
-    refs.form.reset();
-    resetReceipt();
-    resetVerification();
-    loadDemo(variant);
+  if ((options.loadDemo === true || changed) && !options.preserveArtifact) {
+    try {
+      demoData = await apiFetch(`/api/demo/${variant}`);
+    } catch (error) {
+      showToast(`Demo case failed to load: ${error.message}`, "error");
+    }
   }
+
+  const update = () => {
+    if (currentVariant !== variant) return;
+
+    document.documentElement.style.setProperty("--accent", meta.accent);
+    document.querySelectorAll(".case-card").forEach((button) => {
+      button.classList.toggle("active", button.dataset.variant === variant);
+    });
+    document.querySelectorAll(".queue-card").forEach((card) => {
+      card.classList.toggle("active", card.dataset.demoCard === variant);
+    });
+
+    refs.caseType.textContent = meta.caseType;
+    refs.caseTitle.textContent = meta.title;
+    refs.caseCopy.textContent = meta.copy;
+    refs.labelBounty.textContent = meta.labels.bounty;
+    refs.labelRubric.textContent = meta.labels.rubric;
+    refs.labelArtifact.textContent = meta.labels.artifact;
+    refs.configuredAppId.textContent = shortAddress(app.appId);
+    refs.configuredVerifyLink.href = app.verifyUrl;
+    refs.headerVerifyLink.href = app.verifyUrl;
+    refs.railVerifyLink.href = app.verifyUrl;
+
+    renderIdentityStrip();
+    renderRegistry();
+
+    if (changed && !options.preserveArtifact) {
+      currentArtifact = null;
+      refs.form.reset();
+      resetReceipt();
+      resetVerification();
+    }
+
+    if (demoData) {
+      applyDemo(demoData);
+    }
+  };
 
   if (options.push) {
     history.pushState(null, "", `/agents/${variant}#${currentView}`);
   }
+
+  return options.transition === false ? Promise.resolve(update()) : transitionSurface(update);
 }
 
 function setView(view, options = {}) {
   if (!document.querySelector(`[data-view="${view}"]`)) return;
   currentView = view;
-  document.querySelectorAll("[data-view]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.view === view);
-  });
-  document.querySelectorAll("[data-view-panel]").forEach((panel) => {
-    panel.classList.toggle("active", panel.dataset.viewPanel === view);
-  });
+  const update = () => {
+    document.querySelectorAll("[data-view]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.view === view);
+    });
+    document.querySelectorAll("[data-view-panel]").forEach((panel) => {
+      panel.classList.toggle("active", panel.dataset.viewPanel === view);
+    });
+  };
+
   if (options.push) {
     history.replaceState(null, "", `/agents/${currentVariant}#${view}`);
     window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
   }
+
+  return options.transition === false ? Promise.resolve(update()) : transitionSurface(update);
 }
 
-async function loadDemo(variant) {
+async function loadDemo(variant, options = {}) {
   try {
     const data = await apiFetch(`/api/demo/${variant}`);
-    refs.form.elements.bountyDescription.value = data.bountyDescription ?? "";
-    refs.form.elements.rubric.value = data.rubric ?? "";
-    refs.form.elements.submittedArtifact.value = data.submittedArtifact ?? "";
-    refs.form.elements.submitter.value = data.submitter ?? "";
+    return transitionSurface(() => applyDemo(data), { instant: options.transition === false });
   } catch (error) {
     showToast(`Demo case failed to load: ${error.message}`, "error");
   }
+}
+
+function applyDemo(data) {
+  refs.form.elements.bountyDescription.value = data.bountyDescription ?? "";
+  refs.form.elements.rubric.value = data.rubric ?? "";
+  refs.form.elements.submittedArtifact.value = data.submittedArtifact ?? "";
+  refs.form.elements.submitter.value = data.submitter ?? "";
 }
 
 async function pingRuntime() {
@@ -556,9 +621,14 @@ function renderArtifact(artifact, options = {}) {
 
   refs.settlementGate.className = `settlement-gate ${artifact.decision}`;
   refs.settlementGate.innerHTML = `
-    <span class="gate-label">Settlement Gate</span>
-    <strong>${esc(settlementLabel)}</strong>
-    <small>${esc(settlement.note)}</small>
+    <span class="gate-label">Decision Receipt</span>
+    <strong>Verdict sealed</strong>
+    <small>Settlement: ${esc(settlementLabel)}. ${esc(settlement.note)}</small>
+    <div class="gate-checks">
+      <span>Hash match</span>
+      <span>Signature valid</span>
+      <span>Judge identity confirmed</span>
+    </div>
   `;
 
   refs.evidenceCount.textContent = `${artifact.evidenceChecked.length} checks`;
@@ -613,9 +683,14 @@ function resetReceipt() {
   refs.reasoningList.innerHTML = "<li>Generate a verdict to inspect the signed reasoning trace.</li>";
   refs.settlementGate.className = "settlement-gate";
   refs.settlementGate.innerHTML = `
-    <span class="gate-label">Settlement Gate</span>
+    <span class="gate-label">Decision Receipt</span>
     <strong>Awaiting verdict</strong>
-    <small>Generate a signed receipt to decide release, hold, reject, or appeal.</small>
+    <small>Input hash, evidence check, signature, and settlement action are pending.</small>
+    <div class="gate-checks pending">
+      <span>Input hash pending</span>
+      <span>Evidence review pending</span>
+      <span>Signature pending</span>
+    </div>
   `;
   resetPipeline();
 }
