@@ -1,29 +1,39 @@
 # ProofJudge
 
-ProofJudge is a private-preview EigenCloud submission scaffold: one reusable verifiable-agent runtime with three focused judging agents.
+ProofJudge is a verifiable acceptance layer for autonomous work. It evaluates submitted work against explicit terms, emits a signed `DecisionArtifact`, and lets anyone verify that the receipt was not altered after the deployed evaluator produced it.
 
-- ProofJudge Code evaluates a PR or diff against a bounty rubric.
-- ProofJudge Research evaluates a research brief against source and rubric requirements.
-- ProofJudge Negotiation evaluates an offer or proposal against stated constraints.
+The product is one ProofJudge suite with four domain-specific verifiable judges:
 
-The first shipping target is ProofJudge Code. Research and Negotiation share the runtime, but whether they count as separate paid agents should be validated with the Eigen mentor before packaging or deploying them separately.
+- ProofJudge Code: bounty and PR acceptance adjudication.
+- ProofJudge Research: sourced research deliverable acceptance.
+- ProofJudge Negotiation: deal-term compliance review.
+- ProofJudge Governance: pre-vote governance risk receipt.
 
-The local version is intentionally tight: an Express API, a static demo UI, deterministic judging heuristics, a `DecisionArtifact` JSON record, and a `Verify Decision` audit trail. Current-alpha Eigen attestation and signing are represented through clean adapters and clearly labeled demo-mode metadata until real deployment values are available.
+ProofJudge does not claim AI judgment is perfect. It makes the acceptance decision attributable, structured, signed, inspectable, and tamper-evident.
+
+## Live EigenCompute Deployments
+
+| Judge | App ID | URL |
+|---|---|---|
+| Code | `0xd3647631C4706be744BE813cD0226e4f149e5aC0` | `http://34.12.29.220:3000` |
+| Research | `0x898E1d5603070C7452Ee7F8CF288639A63a217cc` | `http://35.204.155.165:3000` |
+| Negotiation | `0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322` | `http://34.58.112.209:3000` |
+| Governance | `0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94` | `http://34.87.56.225:3000` |
+
+EigenVerify dashboard pattern:
+
+```text
+https://verify.eigencloud.xyz/app/<APP_ID>
+```
 
 ## Local Setup
 
 ```bash
 npm install
-$env:PORT=3001; npm run dev
+npm run dev
 ```
 
-Open `http://localhost:3001/agents/code`.
-
-Dedicated local routes:
-
-- `http://localhost:3001/agents/code`
-- `http://localhost:3001/agents/research`
-- `http://localhost:3001/agents/negotiation`
+Open `http://localhost:3000/agents/code`.
 
 Run checks:
 
@@ -31,55 +41,37 @@ Run checks:
 npm run check
 ```
 
-## Local Docker Test
+Expected local check output:
 
-If another app already uses Windows port `3000`, keep ProofJudge's container port at `3000` and map a different host port:
-
-```bash
-npm run check
-npm run build
-docker build --platform linux/amd64 -t proofjudge-code:local .
-docker run --rm -p 3002:3000 --env-file .env.example proofjudge-code:local
+```text
+Smoke checks passed for all ProofJudge variants.
 ```
 
-Open `http://localhost:3002/agents/code`.
+## API
 
-The `3002:3000` mapping means:
+- `GET /healthz` returns service health.
+- `GET /api/variants` returns judge metadata.
+- `GET /api/demo/:variant` returns seeded demo inputs.
+- `POST /api/judge` returns a signed `DecisionArtifact`.
+- `POST /api/verify` verifies artifact hash, signature, schema, deployment identity, and attestation mode.
 
-- `3002` is the Windows host port you open in the browser.
-- `3000` is the container port used by the app and EigenCompute.
+## Trust Boundary
 
-## EigenCompute Deployment
+Verification proves this decision record came from the configured ProofJudge evaluator and was not altered. It does not prove the verdict is objectively correct.
 
-Install and authenticate the EigenCloud CLI:
-
-```bash
-npm install -g @layr-labs/ecloud-cli
-ecloud auth login
-```
-
-Build for EigenCompute's expected architecture:
-
-```bash
-docker buildx build --platform linux/amd64 -t YOUR_REGISTRY/proofjudge:latest .
-docker push YOUR_REGISTRY/proofjudge:latest
-```
-
-Deploy with the `ecloud` CLI following the private-preview quickstart flow. Set the service port to `3000`, and make sure the app is reachable on `0.0.0.0:3000`. After deployment, fill `EIGEN_APP_ID`, `EIGEN_INSTANCE_IP`, and any attestation endpoint values in the EigenCloud environment settings.
-
-Do not put private keys or wallet secrets in this repository. Use `.env.example` as the contract and set real values through your local shell or EigenCloud environment config.
-
-## Submission Strategy
-
-1. Deploy ProofJudge Code live first.
-2. Confirm the public URL, logs, and `Verify Decision` flow.
-3. Ask the Eigen mentor whether shared-runtime variants count as three agents or require separate deployments.
-4. Package Research and Negotiation as separate routes or separate EigenCompute apps based on that answer.
+The current signature mode is service-verifiable HMAC-SHA256. Offline third-party verification is a future upgrade, likely with Ed25519 or another asymmetric signature scheme.
 
 ## Deliverables
 
 - Agent explainer: [docs/agent-explainer.md](docs/agent-explainer.md)
 - Architecture: [docs/architecture.md](docs/architecture.md)
+- Architecture diagram: [docs/architecture-diagram.svg](docs/architecture-diagram.svg)
 - Product feedback: [docs/feedback.md](docs/feedback.md)
 - Demo Day script: [docs/demo-day.md](docs/demo-day.md)
 - Submission checklist: [docs/submission-checklist.md](docs/submission-checklist.md)
+- Readiness audit: [docs/readiness-audit.md](docs/readiness-audit.md)
+- Local demo backup screenshots: [docs/demo-backups](docs/demo-backups)
+
+## Repository Hygiene
+
+Do not commit private preview PDFs or `.env.*` deployment files to a public repository without explicit permission. `.env.example` is the only environment file intended to be tracked.

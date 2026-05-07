@@ -1,54 +1,50 @@
 # ProofJudge Submission Checklist
 
-The private-preview deck pays base compensation for up to three agents that each complete the deliverable set. Treat the shared runtime as one platform with three focused submissions only after mentor validation.
+ProofJudge is one submission: one suite, four domain-specific verifiable judges, one public story, one receipt-centered demo.
 
-## Shared Setup
+## Engineering
 
-- [ ] Eigen account access confirmed.
-- [ ] Credits activated.
-- [ ] Mentor assigned.
-- [ ] Slack channel joined.
-- [ ] `ecloud` CLI installed.
-- [ ] Docker installed locally or available in CI.
-- [ ] Container image pushed to registry.
-- [ ] ProofJudge Code deployed on EigenCompute.
-- [ ] Public URL or demo video created.
-- [ ] Mentor confirmed whether shared-runtime variants count as separate agents.
+- [x] Code deployment recorded: `34.12.29.220:3000`
+- [x] Research deployment recorded: `35.204.155.165:3000`
+- [x] Negotiation deployment recorded: `34.58.112.209:3000`
+- [x] Governance deployment recorded: `34.87.56.225:3000`
+- [x] Mainnet Alpha EigenVerify links recorded
+- [x] `.env.*` files ignored by git
+- [x] Local build passes
+- [x] Smoke tests pass
+- [x] Live health checks pass
+- [x] Live judge and verify checks pass
+- [x] Visual QA captured for desktop, tablet, and mobile
+- [ ] New Settlement Console deployed to live public URL
 
-## ProofJudge Code
+## Product
 
-- [ ] Working deployed route demonstrated.
-- [ ] `Verify Decision` flow demonstrated.
-- [ ] Agent write-up completed.
-- [ ] Architecture diagram included.
-- [ ] Public demo/site/video prepared.
-- [ ] Product feedback doc includes Code-specific notes.
-- [ ] Demo Day talking point prepared.
+- [x] UI says EigenCompute/Mainnet Alpha, not Sepolia
+- [x] Settlement receipt is the primary product surface
+- [x] Settlement action is more prominent than score
+- [x] App ID and EigenVerify link are visible
+- [x] Evidence matrix is visible after verdict
+- [x] Trust disclaimer is visible in the verifier
+- [x] Code Bounty is the primary demo path
+- [x] Cinematic title screen is skippable
+- [x] Guided Code Bounty demo uses real judge and verify routes
+- [x] Reduced-motion support is present
 
-## ProofJudge Research
+## Required Deliverables
 
-- [ ] Working deployed route demonstrated.
-- [ ] Agent write-up completed.
-- [ ] Architecture diagram included.
-- [ ] Public demo/site/video prepared.
-- [ ] Product feedback doc includes Research-specific notes.
-- [ ] Demo Day talking point prepared.
+- [x] Agent explainer: `docs/agent-explainer.md`
+- [x] Architecture doc: `docs/architecture.md`
+- [x] Architecture diagram: `docs/architecture-diagram.svg`
+- [x] Product feedback doc: `docs/feedback.md`
+- [x] Demo Day script: `docs/demo-day.md`
+- [ ] Public site/demo URL finalized with the new Settlement Console UI
+- [ ] Video demo recorded and publicly accessible
+- [ ] Demo Day attendance confirmed
 
-## ProofJudge Negotiation
+## Demo Backups
 
-- [ ] Working deployed route demonstrated.
-- [ ] Agent write-up completed.
-- [ ] Architecture diagram included.
-- [ ] Public demo/site/video prepared.
-- [ ] Product feedback doc includes Negotiation-specific notes.
-- [ ] Demo Day talking point prepared.
-
-## Payout Mapping
-
-- Orientation: confirm attendance and policies.
-- Deployed agent: show EigenCompute deployment, not just local demo.
-- Write-up: use `docs/agent-explainer.md`.
-- Architecture diagram: use `docs/architecture.md`.
-- Website/demo: use the running app and record a short walkthrough.
-- Product feedback: complete `docs/feedback.md` after deployment.
-- Demo Day: use `docs/demo-day.md`.
+- [x] Local fallback demo screenshots captured in `docs/demo-backups/`
+- [x] Local demo server confirmed at `http://127.0.0.1:3000`
+- [x] EigenVerify links ready in README and UI
+- [x] Final line included in `docs/demo-day.md`: "ProofJudge does not make AI judgment perfect. It makes AI judgment accountable."
+- [ ] Live deployment backup screenshots captured after deployment

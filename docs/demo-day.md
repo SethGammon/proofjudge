@@ -1,29 +1,62 @@
 # ProofJudge Demo Day Script
 
-## 0:00 - Opening
+## 0:00 - Entry
 
-ProofJudge Code is a verifiable judge for software bounty work. It evaluates whether a submitted PR, diff, or implementation summary satisfies a bounty rubric and emits a decision artifact that can be independently reviewed.
+ProofJudge opens as a verifiable decision chamber. The first screen is brief: ProofJudge, verifiable acceptance for autonomous work, four live judge identities, and the proof path from terms to signed receipt to settlement.
 
-## 0:25 - Why It Matters
+Click `Run Guided Demo`.
 
-Autonomous agents will increasingly pay for work, accept work, and route funds based on outcomes. If the judge is just a hosted black box, users must trust the operator. ProofJudge is designed for EigenCompute so the judging code, deployment identity, and decision artifact can become externally verifiable.
+## 0:15 - Hook
 
-## 0:55 - Product Demo
+Agents are going to do paid work, and other agents are going to buy it. But payment still depends on one question: did the work meet the terms?
 
-I will show ProofJudge Code first. The app loads a seeded software bounty, rubric, and implementation artifact. I submit it to the agent and it produces a pass, fail, or revise decision.
+ProofJudge is the verifiable acceptance layer. It runs the acceptance decision inside EigenCompute and emits a signed settlement receipt.
 
-The same runtime also supports Research and Negotiation variants, but the deployment gate is ProofJudge Code.
+## 0:45 - Code Bounty Case
 
-## 1:50 - Artifact
+The guided demo loads a code bounty. The task terms, acceptance rubric, and submitted PR summary are explicit.
 
-The artifact includes the task id, rubric, submitted artifact hash, decision artifact hash, decision, score, confidence, evidence checked, reasoning, model metadata, deployment identity, attestation mode, timestamp, signature, and simulated settlement recommendation. In this local demo, attestation is marked as a placeholder. In EigenCompute deployment, the same field is where the TEE evidence is attached.
+Click or let guided mode run `Generate Signed Verdict`.
 
-Then I click Verify Decision. The app recomputes the decision hash, verifies the signature, checks deployment identity, and clearly labels attestation as alpha placeholder or EigenCompute-backed.
+The result is not just a score. It is a DecisionArtifact: decision, settlement action, model mode, app identity, input hash, artifact hash, and signature.
 
-## 2:30 - Why EigenCloud
+## 1:30 - Receipt
 
-EigenCloud is the right substrate because the value is not just agent execution. The value is agent execution with evidence: what code ran, where it ran, and what artifact it produced.
+Show the Signed Decision Receipt rail first. The settlement action is the hero:
 
-## 2:50 - Close
+- Release payment
+- Hold for revision
+- Reject payment
+- Escalate for appeal
 
-The next step is wiring the LLM proxy, attaching live EigenCompute attestation evidence, and anchoring decision hashes onchain. ProofJudge is intentionally narrow, but it demonstrates the larger pattern: agents that make accountable decisions about real work.
+The score and confidence are supporting evidence, not the product.
+
+## 1:55 - Verify
+
+Now verify the receipt.
+
+The verifier checks the schema, artifact hash, signature, deployment identity, attestation mode, and timestamp. If the artifact body changed after signing, verification fails.
+
+This is the trust boundary: verification proves the decision record came from the deployed evaluator and was not altered. It does not prove the verdict is objectively correct.
+
+## 2:25 - Tamper
+
+Now tamper with the receipt by changing the score.
+
+The hash no longer matches. The signature is invalid. The UI shows the original score, tampered score, embedded hash, recomputed hash, and failed signature check.
+
+That is the point: ProofJudge does not make AI judgment perfect. It makes AI judgment accountable.
+
+## 2:50 - EigenCloud
+
+Open the EigenVerify link for the Code deployment:
+
+```text
+https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0
+```
+
+EigenCompute matters because the evaluator has a deployment identity. The receipt matters because downstream systems can verify, store, appeal, or settle against the decision artifact.
+
+## 3:00 - Close
+
+ProofJudge turns AI judgment from an unverifiable opinion into an accountable settlement artifact.
