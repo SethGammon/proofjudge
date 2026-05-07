@@ -19,6 +19,7 @@ Objective: rebuild ProofJudge into a presentation-grade EigenCloud Private Previ
 | Accurate EigenCompute/Mainnet Alpha copy | Live HTML checks show no `EigenCloud Sepolia` copy | Complete live |
 | Architecture diagram | `docs/architecture-diagram.svg` | Complete |
 | Explainer, architecture, feedback, demo script | Updated docs in `docs/` | Complete |
+| Demo Day attendance | User confirmed on 2026-05-07 that the invite was received and attendance is confirmed for Demo Day on 2026-05-12 | Complete |
 | Private `.env.*` files ignored | `.gitignore` | Complete |
 | Private preview source docs not staged for public repo | `.gitignore` ignores `docs/private-preview/` and local planning docs | Complete |
 
@@ -49,7 +50,7 @@ Current public URLs:
 
 Remaining incomplete or weakly verified items:
 
-- Demo Day attendance confirmed
+- None.
 
 ## Latest Public Commits
 
@@ -76,6 +77,4 @@ Excluded local/private artifacts:
 
 ## Next Required Action
 
-Remaining non-code action:
-
-1. Confirm Demo Day attendance.
+No remaining action is required for the current submission readiness checklist.

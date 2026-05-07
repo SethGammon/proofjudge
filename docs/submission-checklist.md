@@ -40,7 +40,7 @@ ProofJudge is one submission: one suite, four domain-specific verifiable judges,
 - [x] Demo Day script: `docs/demo-day.md`
 - [x] Public site/demo URL finalized with the new Settlement Console UI: `http://34.12.29.220:3000/`
 - [x] Video demo recorded and publicly accessible in `docs/demo-video/proofjudge-live-demo.webm`
-- [ ] Demo Day attendance confirmed
+- [x] Demo Day attendance confirmed: invite received and attendance confirmed for Demo Day on 2026-05-12
 
 ## Demo Backups
 
