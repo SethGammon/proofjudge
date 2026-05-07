@@ -12,6 +12,12 @@ Video file:
 docs/demo-video/proofjudge-live-demo.webm
 ```
 
+Public raw URL:
+
+```text
+https://raw.githubusercontent.com/SethGammon/proofjudge/master/docs/demo-video/proofjudge-live-demo.webm
+```
+
 The recording is browser-driven and captioned in-frame so it can be watched without narration. It covers:
 
 - cinematic entry,

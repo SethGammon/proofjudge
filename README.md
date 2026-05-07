@@ -13,18 +13,17 @@ ProofJudge does not claim AI judgment is perfect. It makes the acceptance decisi
 
 ## Live EigenCompute Deployments
 
-| Judge | App ID | URL |
-|---|---|---|
-| Code | `0xd3647631C4706be744BE813cD0226e4f149e5aC0` | `http://34.12.29.220:3000` |
-| Research | `0x898E1d5603070C7452Ee7F8CF288639A63a217cc` | `http://35.204.155.165:3000` |
-| Negotiation | `0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322` | `http://34.58.112.209:3000` |
-| Governance | `0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94` | `http://34.87.56.225:3000` |
+| Judge | App ID | URL | EigenVerify |
+|---|---|---|---|
+| Code | `0xd3647631C4706be744BE813cD0226e4f149e5aC0` | `http://34.12.29.220:3000` | [dashboard](https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0) |
+| Research | `0x898E1d5603070C7452Ee7F8CF288639A63a217cc` | `http://35.204.155.165:3000` | [dashboard](https://verify.eigencloud.xyz/app/0x898E1d5603070C7452Ee7F8CF288639A63a217cc) |
+| Negotiation | `0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322` | `http://34.58.112.209:3000` | [dashboard](https://verify.eigencloud.xyz/app/0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322) |
+| Governance | `0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94` | `http://34.87.56.225:3000` | [dashboard](https://verify.eigencloud.xyz/app/0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94) |
 
-EigenVerify dashboard pattern:
+Public demo video:
 
-```text
-https://verify.eigencloud.xyz/app/<APP_ID>
-```
+- [docs/demo-video/proofjudge-live-demo.webm](docs/demo-video/proofjudge-live-demo.webm)
+- [raw download URL](https://raw.githubusercontent.com/SethGammon/proofjudge/master/docs/demo-video/proofjudge-live-demo.webm)
 
 ## Local Setup
 
@@ -68,9 +67,11 @@ The current signature mode is service-verifiable HMAC-SHA256. Offline third-part
 - Architecture diagram: [docs/architecture-diagram.svg](docs/architecture-diagram.svg)
 - Product feedback: [docs/feedback.md](docs/feedback.md)
 - Demo Day script: [docs/demo-day.md](docs/demo-day.md)
+- Demo video: [docs/demo-video/proofjudge-live-demo.webm](docs/demo-video/proofjudge-live-demo.webm)
 - Submission checklist: [docs/submission-checklist.md](docs/submission-checklist.md)
 - Readiness audit: [docs/readiness-audit.md](docs/readiness-audit.md)
 - Local demo backup screenshots: [docs/demo-backups](docs/demo-backups)
+- Live demo backup screenshots: [docs/live-demo-backups](docs/live-demo-backups)
 
 ## Repository Hygiene
 
