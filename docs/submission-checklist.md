@@ -15,7 +15,8 @@ ProofJudge is one submission: one suite, four domain-specific verifiable judges,
 - [x] Live health checks pass
 - [x] Live judge and verify checks pass
 - [x] Visual QA captured for desktop, tablet, and mobile
-- [ ] New Settlement Console deployed to live public URL
+- [x] New Settlement Console deployed to live public URL
+- [ ] Live receipt signing key populated; current public deployments use `signatureMode: simulated`
 
 ## Product
 
@@ -37,7 +38,7 @@ ProofJudge is one submission: one suite, four domain-specific verifiable judges,
 - [x] Architecture diagram: `docs/architecture-diagram.svg`
 - [x] Product feedback doc: `docs/feedback.md`
 - [x] Demo Day script: `docs/demo-day.md`
-- [ ] Public site/demo URL finalized with the new Settlement Console UI
+- [x] Public site/demo URL finalized with the new Settlement Console UI: `http://34.12.29.220:3000/`
 - [ ] Video demo recorded and publicly accessible
 - [ ] Demo Day attendance confirmed
 
@@ -47,4 +48,4 @@ ProofJudge is one submission: one suite, four domain-specific verifiable judges,
 - [x] Local demo server confirmed at `http://127.0.0.1:3000`
 - [x] EigenVerify links ready in README and UI
 - [x] Final line included in `docs/demo-day.md`: "ProofJudge does not make AI judgment perfect. It makes AI judgment accountable."
-- [ ] Live deployment backup screenshots captured after deployment
+- [x] Live deployment backup screenshots captured after deployment in `docs/live-demo-backups/`

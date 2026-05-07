@@ -8,15 +8,15 @@ Objective: rebuild ProofJudge into a presentation-grade EigenCloud Private Previ
 
 | Requirement | Evidence | Status |
 |---|---|---|
-| Settlement Console with Evaluate, Verify Receipt, Agent Identity, Receipts, Demo surfaces | `src/public/index.html`, `src/public/main.js`, `src/public/styles.css` | Complete locally |
-| Signed Decision Receipt and settlement action as hero | Receipt rail and Settlement Gate in local UI | Complete locally |
-| Evidence matrix, verification checklist, tamper diff, JSON drawer | Local UI and Playwright screenshots in `docs/demo-backups/` | Complete locally |
-| Cinematic title screen | `entry-layer` in `src/public/index.html` | Complete locally |
-| Skippable entry transition | `Skip Intro`, `Enter Console`, `enterConsole()` | Complete locally |
-| Guided demo queue | `demo-queue` and presenter controls | Complete locally |
-| Guided Code Bounty sequence uses real judge/verify routes | Playwright run reached `/api/judge`, `/api/verify`, then tamper failure | Complete locally |
-| Reduced-motion support | CSS media query plus Playwright reduced-motion emulation | Complete locally |
-| Accurate EigenCompute/Mainnet Alpha copy | Static UI and docs no longer use live UI Sepolia copy locally | Complete locally |
+| Settlement Console with Evaluate, Verify Receipt, Agent Identity, Receipts, Demo surfaces | `src/public/index.html`, `src/public/main.js`, `src/public/styles.css`; live at `http://34.12.29.220:3000/` | Complete live |
+| Signed Decision Receipt and settlement action as hero | Receipt rail and Settlement Gate in live screenshots `docs/live-demo-backups/03-live-signed-receipt-desktop.png` | Complete live |
+| Evidence matrix, verification checklist, tamper diff, JSON drawer | Live screenshots in `docs/live-demo-backups/` | Complete live |
+| Cinematic title screen | `entry-layer` in source and `docs/live-demo-backups/01-live-entry-desktop.png` | Complete live |
+| Skippable entry transition | Live Playwright run clicked `Enter Console` successfully after fixing the status-strip interception | Complete live |
+| Guided demo queue | Live left-rail demo queue and presenter controls | Complete live |
+| Guided Code Bounty sequence uses real judge/verify routes | Live Playwright run reached `/api/judge`, `/api/verify`, then tamper failure with zero browser errors | Complete live |
+| Reduced-motion support | CSS media query plus live reduced-motion screenshot `docs/live-demo-backups/08-live-reduced-motion-console.png` | Complete live |
+| Accurate EigenCompute/Mainnet Alpha copy | Live HTML checks show no `EigenCloud Sepolia` copy | Complete live |
 | Architecture diagram | `docs/architecture-diagram.svg` | Complete |
 | Explainer, architecture, feedback, demo script | Updated docs in `docs/` | Complete |
 | Private `.env.*` files ignored | `.gitignore` | Complete |
@@ -29,45 +29,42 @@ Objective: rebuild ProofJudge into a presentation-grade EigenCloud Private Previ
 | Browser JS syntax | `node --check src/public/main.js` | Pass |
 | Local build and smoke | `npm run check` -> `Smoke checks passed for all ProofJudge variants.` | Pass |
 | Local fallback server | `http://127.0.0.1:3000/healthz` -> `{"ok":true,"service":"proofjudge"}` | Pass |
-| Live health checks | All four live deployments returned `ok: true` | Pass |
-| Live judge and verify | All four returned `mode: llm`, `provider: eigen-gateway`, `attestation: eigencompute`, `verifyOk: true` | Pass |
-| Visual QA | Desktop, tablet, mobile, guided flow, tamper flow, reduced motion | Pass locally |
-| Browser console | 0 errors after favicon and layout fixes | Pass |
+| Live health checks | All four live deployments returned `ok: true` after redeploying commit `6238479a86c3dc03fdafe4c2cd11fc5cdc5bda68` | Pass |
+| Live judge and verify | Node/fetch live check returned `mode: llm`, `provider: eigen-gateway`, `attestation: eigencompute`, `verifyOk: true` for all four variants | Pass |
+| Live tamper check | Node/fetch live check returned `tamperOk: false`, `tamperStatus: failed` for all four variants | Pass |
+| Visual QA | Desktop, tablet, mobile, guided flow, tamper flow, reduced motion captured from live Code deployment in `docs/live-demo-backups/` | Pass live |
+| Browser console | Live Playwright flow completed with `errors: []` | Pass |
 
-## Current Deployment Gap
+## Remaining Gaps
 
-The new Settlement Console is not deployed publicly yet.
+The new Settlement Console is deployed publicly and verified on all four EigenCompute apps.
 
-Evidence: `http://34.12.29.220:3000/agents/code` still serves the older page title `ProofJudge - Verifiable Work Evaluation` and visible `EigenCloud Sepolia` copy.
+Current public URLs:
 
-Therefore, these checklist items remain open:
+- Code: `http://34.12.29.220:3000/`
+- Research: `http://35.204.155.165:3000/`
+- Negotiation: `http://34.58.112.209:3000/`
+- Governance: `http://34.87.56.225:3000/`
 
-- Public site/demo URL finalized with the new Settlement Console UI
-- New Settlement Console deployed to live public URL
-- Live deployment backup screenshots captured after deployment
+Remaining incomplete or weakly verified items:
+
+- Live receipt signatures still report `signatureMode: simulated` because the ignored `.env.*` files contain `PROOFJUDGE_SIGNING_KEY` keys with empty values. Updating deployment secrets requires explicit approval.
 - Video demo recorded and publicly accessible
 - Demo Day attendance confirmed
 
-## Public-Safe Files To Commit Before Deployment
+## Latest Public Commits
 
-Tracked modifications:
+Latest source commit deployed:
 
-- `.gitignore`
-- `README.md`
-- `docs/agent-explainer.md`
-- `docs/architecture.md`
-- `docs/demo-day.md`
-- `docs/feedback.md`
-- `docs/submission-checklist.md`
-- `src/public/index.html`
-- `src/public/main.js`
-- `src/public/styles.css`
+- `6238479a86c3dc03fdafe4c2cd11fc5cdc5bda68` - fixes the live entry click obstruction, keeps the guided demo queue visible, restores identity-strip visibility, and clarifies tamper copy.
 
-New public artifacts:
+Previous presentation rebuild commit:
 
-- `docs/architecture-diagram.svg`
-- `docs/demo-backups/`
-- `docs/readiness-audit.md`
+- `5a5eca3d6a83a7e940b74d8bd8505af4f4226848` - rebuilds ProofJudge as the Settlement Console.
+
+New public evidence artifacts:
+
+- `docs/live-demo-backups/`
 
 Excluded local/private artifacts:
 
@@ -79,12 +76,8 @@ Excluded local/private artifacts:
 
 ## Next Required Action
 
-Approve a publish/deploy step:
+Choose one of the remaining non-code actions:
 
-1. Commit the public-safe files.
-2. Push `master` to `https://github.com/SethGammon/proofjudge.git`.
-3. Upgrade the four EigenCompute apps on `mainnet-alpha` from the new commit.
-4. Re-run live health, live judge/verify, and live UI checks.
-5. Capture live deployment backup screenshots.
-6. Record and publish the video demo.
-7. Confirm Demo Day attendance.
+1. Explicitly approve populating `PROOFJUDGE_SIGNING_KEY` in the ignored deployment env files and redeploying if live `signatureMode: signed` is required before submission.
+2. Record and publish the video demo.
+3. Confirm Demo Day attendance.
