@@ -31,8 +31,8 @@ const META = {
   code: {
     accent: "#37d67a",
     caseType: "Code Bounty",
-    title: "Signed settlement receipts for code bounties.",
-    copy: "Determine whether a bounty or PR submission satisfies the acceptance rubric enough to release payment, request revision, or reject settlement.",
+    title: "Judge a code bounty.",
+    copy: "Load the demo case, generate a signed verdict, then verify the settlement receipt.",
     labels: {
       bounty: "Task Terms",
       rubric: "Acceptance Rubric",
@@ -42,8 +42,8 @@ const META = {
   research: {
     accent: "#5bb8ff",
     caseType: "Research Deliverable",
-    title: "Research acceptance receipts with claims, assumptions, and sources checked.",
-    copy: "Determine whether a research deliverable meets the promised evidence standard, with claims, assumptions, sources, and caveats checked against the rubric.",
+    title: "Accept research with evidence.",
+    copy: "Check whether claims, assumptions, sources, and caveats satisfy the promised evidence standard.",
     labels: {
       bounty: "Research Objective",
       rubric: "Evidence Standard",
@@ -53,8 +53,8 @@ const META = {
   negotiation: {
     accent: "#f0b84a",
     caseType: "Deal Terms",
-    title: "Deal-term compliance receipts for neutral proposal review.",
-    copy: "Determine whether a proposal satisfies required business terms and identify exceptions that block acceptance.",
+    title: "Check deal-term compliance.",
+    copy: "Compare a proposal against required business terms and surface exceptions that block acceptance.",
     labels: {
       bounty: "Deal Context",
       rubric: "Required Terms",
@@ -64,8 +64,8 @@ const META = {
   governance: {
     accent: "#b692ff",
     caseType: "Governance Preflight",
-    title: "Signed pre-vote receipts for governance risk.",
-    copy: "Check proposal completeness, treasury exposure, execution controls, and obvious governance risk before a vote opens.",
+    title: "Preflight a governance vote.",
+    copy: "Check proposal completeness, treasury exposure, execution controls, and obvious risk before a vote opens.",
     labels: {
       bounty: "DAO / Protocol Context",
       rubric: "Governance Risk Rubric",
@@ -96,6 +96,7 @@ let variantConfigs = {};
 let guidedRunning = false;
 
 const refs = {
+  appShell: document.getElementById("app-shell"),
   entryLayer: document.getElementById("entry-layer"),
   skipEntryBtn: document.getElementById("skip-entry-btn"),
   enterConsoleBtn: document.getElementById("enter-console-btn"),
@@ -138,6 +139,7 @@ const refs = {
   demoSkipReceiptBtn: document.getElementById("demo-skip-receipt-btn"),
   demoOpenVerifyBtn: document.getElementById("demo-open-verify-btn"),
   railVerifyBtn: document.getElementById("rail-verify-btn"),
+  receiptRail: document.getElementById("receipt-rail"),
   receiptState: document.getElementById("receipt-state"),
   receiptSettlement: document.getElementById("receipt-settlement"),
   receiptDecision: document.getElementById("receipt-decision"),
@@ -322,7 +324,7 @@ async function init() {
   route();
   loadDemo(currentVariant);
   pingRuntime();
-  if (sessionStorage.getItem("proofjudge.entry.dismissed") === "true") {
+  if (window.location.pathname.startsWith("/agents/") || sessionStorage.getItem("proofjudge.entry.dismissed") === "true") {
     refs.entryLayer.hidden = true;
   }
 }
@@ -530,6 +532,8 @@ function renderArtifact(artifact, options = {}) {
 
   refs.receiptState.textContent = "Sealed";
   refs.receiptState.className = "sealed";
+  refs.appShell.dataset.receipt = "sealed";
+  refs.receiptRail.dataset.state = "sealed";
   refs.receiptSettlement.className = `receipt-settlement ${artifact.decision}`;
   refs.receiptSettlement.innerHTML = `
     <span>Settlement Action</span>
@@ -580,6 +584,8 @@ function renderArtifact(artifact, options = {}) {
 
 function resetReceipt() {
   currentArtifact = null;
+  refs.appShell.dataset.receipt = "pending";
+  refs.receiptRail.dataset.state = "pending";
   refs.receiptState.textContent = "Pending";
   refs.receiptState.className = "";
   refs.receiptSettlement.className = "receipt-settlement";
@@ -665,7 +671,7 @@ function renderTamperDiff(original, tampered, verification) {
   refs.tamperDiff.hidden = false;
   refs.tamperDiff.innerHTML = `
     <div class="section-title">
-      <span>Tamper Diff Panel</span>
+      <span>Tamper Detected</span>
       <small>Score changed after sealing</small>
     </div>
     <div class="diff-grid">

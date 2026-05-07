@@ -10,6 +10,7 @@ proofjudge-server*.log
 proofjudge-*.log
 .playwright-cli/
 output/playwright/
+test-results/
 docs/private-preview/
 docs/handoff.md
 docs/proofjudge-finish-line-master-plan.md
