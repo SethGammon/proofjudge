@@ -39,7 +39,7 @@ ProofJudge is one submission: one suite, four domain-specific verifiable judges,
 - [x] Product feedback doc: `docs/feedback.md`
 - [x] Demo Day script: `docs/demo-day.md`
 - [x] Public site/demo URL finalized with the new Settlement Console UI: `http://34.12.29.220:3000/`
-- [ ] Video demo recorded and publicly accessible
+- [x] Video demo recorded and publicly accessible in `docs/demo-video/proofjudge-live-demo.webm`
 - [ ] Demo Day attendance confirmed
 
 ## Demo Backups
