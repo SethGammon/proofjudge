@@ -30,7 +30,7 @@ Objective: rebuild ProofJudge into a presentation-grade EigenCloud Private Previ
 | Local build and smoke | `npm run check` -> `Smoke checks passed for all ProofJudge variants.` | Pass |
 | Local fallback server | `http://127.0.0.1:3000/healthz` -> `{"ok":true,"service":"proofjudge"}` | Pass |
 | Live health checks | All four live deployments returned `ok: true` after redeploying commit `6238479a86c3dc03fdafe4c2cd11fc5cdc5bda68` | Pass |
-| Live judge and verify | Node/fetch live check returned `mode: llm`, `provider: eigen-gateway`, `attestation: eigencompute`, `verifyOk: true` for all four variants | Pass |
+| Live judge and verify | Node/fetch live check returned `mode: llm`, `provider: eigen-gateway`, `attestation: eigencompute`, `signatureMode: signed`, `signatureAlgorithm: HMAC-SHA256`, `verifyOk: true` for all four variants | Pass |
 | Live tamper check | Node/fetch live check returned `tamperOk: false`, `tamperStatus: failed` for all four variants | Pass |
 | Visual QA | Desktop, tablet, mobile, guided flow, tamper flow, reduced motion captured from live Code deployment in `docs/live-demo-backups/` | Pass live |
 | Browser console | Live Playwright flow completed with `errors: []` | Pass |
@@ -49,12 +49,11 @@ Current public URLs:
 
 Remaining incomplete or weakly verified items:
 
-- Live receipt signatures still report `signatureMode: simulated` because the ignored `.env.*` files contain `PROOFJUDGE_SIGNING_KEY` keys with empty values. Updating deployment secrets requires explicit approval.
 - Demo Day attendance confirmed
 
 ## Latest Public Commits
 
-Latest source commit deployed:
+Latest source commit redeployed with live signing env:
 
 - `6238479a86c3dc03fdafe4c2cd11fc5cdc5bda68` - fixes the live entry click obstruction, keeps the guided demo queue visible, restores identity-strip visibility, and clarifies tamper copy.
 
@@ -77,7 +76,6 @@ Excluded local/private artifacts:
 
 ## Next Required Action
 
-Choose one of the remaining non-code actions:
+Remaining non-code action:
 
-1. Explicitly approve populating `PROOFJUDGE_SIGNING_KEY` in the ignored deployment env files and redeploying if live `signatureMode: signed` is required before submission.
-2. Confirm Demo Day attendance.
+1. Confirm Demo Day attendance.

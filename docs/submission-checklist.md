@@ -16,7 +16,7 @@ ProofJudge is one submission: one suite, four domain-specific verifiable judges,
 - [x] Live judge and verify checks pass
 - [x] Visual QA captured for desktop, tablet, and mobile
 - [x] New Settlement Console deployed to live public URL
-- [ ] Live receipt signing key populated; current public deployments use `signatureMode: simulated`
+- [x] Live receipt signing key populated; all public deployments report `signatureMode: signed`
 
 ## Product
 
