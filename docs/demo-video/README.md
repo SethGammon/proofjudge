@@ -29,4 +29,4 @@ The recording is browser-driven and captioned in-frame so it can be watched with
 - EigenCompute/App ID trust boundary,
 - close: "ProofJudge does not make AI judgment perfect. It makes AI judgment accountable."
 
-Latest recorded against deployed commit `6238479a86c3dc03fdafe4c2cd11fc5cdc5bda68`.
+Latest recorded against deployed commit `3f28680364802737b352db320f86cbca95b61478`.
