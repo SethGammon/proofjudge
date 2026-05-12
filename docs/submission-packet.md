@@ -1,6 +1,6 @@
 # ProofJudge Submission Packet
 
-Last verified: 2026-05-09
+Last verified: 2026-05-12
 
 ## One-Line Summary
 
@@ -34,13 +34,10 @@ Primary path: Code Bounty guided demo.
 | Demo Day script | `docs/demo-day.md` |
 | Demo video | `docs/demo-video/proofjudge-live-demo.webm` |
 | Demo video raw URL | `https://raw.githubusercontent.com/SethGammon/proofjudge/master/docs/demo-video/proofjudge-live-demo.webm` |
-| Local fallback screenshots | `docs/demo-backups/` |
-| Live backup screenshots | `docs/live-demo-backups/` |
-| Readiness audit | `docs/readiness-audit.md` |
 
 ## Verification Snapshot
 
-Checks run on 2026-05-09:
+Checks run on 2026-05-12:
 
 ```text
 npm run check
@@ -81,4 +78,3 @@ Live API check:
 - Use the Code deployment as the main live demo.
 - Keep the Research, Negotiation, and Governance deployments as proof that the same receipt layer works across multiple paid-agent domains.
 - Use the demo video if the live site is slow during judging.
-- Use `docs/live-demo-backups/` as the visual fallback if screen sharing or network access fails.

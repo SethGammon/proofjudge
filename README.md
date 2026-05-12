@@ -69,13 +69,6 @@ The current signature mode is service-verifiable HMAC-SHA256. Offline third-part
 - Demo Day script: [docs/demo-day.md](docs/demo-day.md)
 - Demo video: [docs/demo-video/proofjudge-live-demo.webm](docs/demo-video/proofjudge-live-demo.webm)
 - Submission packet: [docs/submission-packet.md](docs/submission-packet.md)
-- Payout readiness: [docs/payout-readiness.md](docs/payout-readiness.md)
-- Final QA report: [docs/final-qa-report.md](docs/final-qa-report.md)
-- UX audit: [docs/ux-audit-2026-05-11.md](docs/ux-audit-2026-05-11.md)
-- Submission checklist: [docs/submission-checklist.md](docs/submission-checklist.md)
-- Readiness audit: [docs/readiness-audit.md](docs/readiness-audit.md)
-- Local demo backup screenshots: [docs/demo-backups](docs/demo-backups)
-- Live demo backup screenshots: [docs/live-demo-backups](docs/live-demo-backups)
 
 ## Repository Hygiene
 
