@@ -8,7 +8,7 @@ Click `Run Guided Demo`.
 
 ## 0:15 - Hook
 
-Agents are going to do paid work, and other agents are going to buy it. But payment still depends on one question: did the work meet the terms?
+Agents are going to do paid work, and other agents are going to buy it. But payment still depends on one question: who verifies that the work met the terms?
 
 ProofJudge is the verifiable acceptance layer. It runs the acceptance decision inside EigenCompute and emits a signed settlement receipt.
 
@@ -18,7 +18,7 @@ The guided demo loads a code bounty. The task terms, acceptance rubric, and subm
 
 Click or let guided mode run `Generate Signed Verdict`.
 
-The result is not just a score. It is a DecisionArtifact: decision, settlement action, model mode, app identity, input hash, artifact hash, and signature.
+The result is not just a score. It is a DecisionArtifact: settlement action, model mode, app identity, input hash, artifact hash, and signature.
 
 ## 1:30 - Receipt
 
@@ -55,7 +55,7 @@ Open the EigenVerify link for the Code deployment:
 https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0
 ```
 
-EigenCompute matters because the evaluator has a deployment identity. The receipt matters because downstream systems can verify, store, appeal, or settle against the decision artifact.
+EigenCompute matters because the evaluator has a deployment identity. If this were just hosted on a generic cloud endpoint, counterparties would have weaker proof of which evaluator produced the receipt. The receipt matters because downstream systems can verify, store, appeal, or settle against the decision artifact.
 
 ## 3:00 - Close
 

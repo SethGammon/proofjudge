@@ -9,26 +9,39 @@
   </head>
   <body>
     <section class="entry-layer" id="entry-layer" aria-label="ProofJudge entry">
-      <button class="skip-entry" type="button" id="skip-entry-btn">Skip Intro</button>
-      <div class="entry-grid" aria-hidden="true">
-        <span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span>
-      </div>
-
-      <div class="entry-receipt" aria-hidden="true">
-        <span class="receipt-kicker">Signed Decision Receipt</span>
-        <strong>ACCEPT</strong>
-        <div><span>Case</span><b>Code bounty #042</b></div>
-        <div><span>Action</span><b>Release settlement</b></div>
-        <div><span>Artifact</span><b>0x8f3a...c91e</b></div>
-        <small>DecisionArtifact sealed</small>
+      <div class="entry-receipt-stack" aria-hidden="true">
+        <div class="entry-receipt-card receipt-card-pass">
+          <span class="receipt-kicker">Signed Decision Receipt</span>
+          <strong>ACCEPT</strong>
+          <div><span>Case</span><b>Code bounty #042</b></div>
+          <div><span>Action</span><b>Release settlement</b></div>
+          <div><span>Artifact</span><b>0x8f3a...c91e</b></div>
+          <small>DecisionArtifact sealed</small>
+        </div>
+        <div class="entry-receipt-card receipt-card-review">
+          <span class="receipt-kicker">Research receipt</span>
+          <strong>REVIEW</strong>
+          <div><span>Case</span><b>Source brief</b></div>
+          <div><span>Action</span><b>Hold for evidence</b></div>
+        </div>
+        <div class="entry-receipt-card receipt-card-fail">
+          <span class="receipt-kicker">Deal receipt</span>
+          <strong>REJECT</strong>
+          <div><span>Case</span><b>Term mismatch</b></div>
+          <div><span>Action</span><b>Block settlement</b></div>
+        </div>
+        <div class="entry-receipt-card receipt-card-govern">
+          <span class="receipt-kicker">Governance receipt</span>
+          <strong>ESCALATE</strong>
+          <div><span>Case</span><b>Treasury risk</b></div>
+          <div><span>Action</span><b>Request review</b></div>
+        </div>
       </div>
 
       <div class="entry-content">
         <div class="entry-mark">EigenCloud Agent Private Preview</div>
         <h1>ProofJudge</h1>
-        <p>Signed acceptance for autonomous work. Evaluate agent output, seal a verdict, and produce a verifiable settlement receipt.</p>
+        <p>When agents do paid work, counterparties need proof of who judged it and whether the receipt was edited. ProofJudge turns acceptance into a signed EigenCompute settlement record.</p>
 
         <div class="entry-actions">
           <button class="primary-button" type="button" id="enter-console-btn">Enter Console</button>
@@ -36,22 +49,22 @@
         </div>
 
         <div class="entry-identities" aria-label="Live judge identities">
-          <span>Code</span>
-          <span>Research</span>
-          <span>Negotiation</span>
-          <span>Governance</span>
+          <button type="button" data-entry-variant="code" aria-pressed="true">Code</button>
+          <button type="button" data-entry-variant="research" aria-pressed="false">Research</button>
+          <button type="button" data-entry-variant="negotiation" aria-pressed="false">Negotiation</button>
+          <button type="button" data-entry-variant="governance" aria-pressed="false">Governance</button>
         </div>
 
         <div class="entry-pipeline" aria-label="Proof pipeline">
-          <span>Terms</span>
+          <button type="button" data-entry-story="terms">Terms</button>
           <i></i>
-          <span>Evaluation</span>
+          <button type="button" data-entry-story="compute">Evaluation</button>
           <i></i>
-          <span>Verdict</span>
+          <button type="button" data-entry-story="receipt">Verdict</button>
           <i></i>
-          <span>Receipt</span>
+          <button type="button" data-entry-story="verify">Receipt</button>
           <i></i>
-          <span>Settlement</span>
+          <button type="button" data-entry-story="live">Settlement</button>
         </div>
 
         <div class="entry-status-strip">
@@ -62,17 +75,55 @@
       </div>
     </section>
 
+    <section class="story-mode" id="story-mode" role="dialog" aria-modal="true" aria-labelledby="story-title" hidden>
+      <div class="story-shell">
+        <header class="story-topbar">
+          <div>
+            <span class="story-kicker" id="story-kicker">Code Bounty Escrow</span>
+            <h2 id="story-title">ProofJudge guided demo</h2>
+          </div>
+          <button class="story-icon-button" type="button" id="story-close-btn" aria-label="Close guided demo">Close</button>
+        </header>
+
+        <div class="story-progress" id="story-progress" aria-label="Guided demo progress"></div>
+
+        <div class="story-frame">
+          <div class="story-copy">
+            <p class="eyebrow" id="story-step-label">Scene 1</p>
+            <h3 id="story-heading">Paid work needs verifiable acceptance.</h3>
+            <p id="story-copy">A builder finished a bounty. The sponsor needs proof before releasing payment.</p>
+            <div class="story-points" id="story-points"></div>
+          </div>
+
+          <div class="story-visual" id="story-visual" aria-live="polite"></div>
+        </div>
+
+        <footer class="story-controls">
+          <div class="story-control-group">
+            <button class="secondary-button" type="button" id="story-back-btn">Back</button>
+            <button class="primary-button" type="button" id="story-next-btn">Next</button>
+          </div>
+          <div class="story-control-group">
+            <button class="secondary-button" type="button" id="story-autoplay-btn">Auto-play</button>
+            <button class="secondary-button" type="button" id="story-restart-btn">Restart</button>
+            <button class="danger-button" type="button" id="story-skip-live-btn">Skip to Live Console</button>
+          </div>
+        </footer>
+      </div>
+    </section>
+
     <div class="app-shell" id="app-shell">
       <header class="topbar">
-        <a class="brand" href="/agents/code" aria-label="ProofJudge home">
+        <a class="brand" href="/" aria-label="ProofJudge landing" data-show-entry>
           <span class="brand-mark">PJ</span>
           <span>
             <strong>ProofJudge</strong>
-            <small>Signed acceptance for autonomous work.</small>
+            <small>Verifiable receipts for paid agent work.</small>
           </span>
         </a>
 
         <div class="topbar-actions">
+          <a class="icon-link" href="/" data-show-entry>Intro</a>
           <span class="status-pill" id="runtime-pill">Checking runtime</span>
           <a class="icon-link" id="header-verify-link" href="https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0" target="_blank" rel="noopener">
             EigenVerify
@@ -80,17 +131,23 @@
         </div>
       </header>
 
+      <div class="live-handoff-banner" id="live-handoff-banner" hidden>
+        <span>Live Console Handoff</span>
+        <strong id="live-handoff-title">Code Bounty loaded</strong>
+        <small id="live-handoff-copy">ProofJudge is about to run the live receipt flow.</small>
+      </div>
+
       <div class="console-grid" id="console-grid">
         <aside class="case-rail" aria-label="Work cases">
           <div class="rail-heading">
             <span>Cases</span>
-            <small>Code Bounty is the primary demo path.</small>
+            <small>Start with paid work acceptance, then show the same receipt layer across other domains.</small>
           </div>
 
           <button class="case-card active" type="button" data-variant="code">
             <span class="case-kicker">Primary</span>
             <strong>Code Bounty</strong>
-            <small>Release or hold bounty payment.</small>
+            <small>Verify whether submitted work should release payment.</small>
           </button>
           <button class="case-card" type="button" data-variant="research">
             <span class="case-kicker">Use Case</span>
@@ -173,9 +230,9 @@
             <div class="panel-header">
               <div>
                 <p class="eyebrow" id="case-type">Code Bounty</p>
-                <h1 id="case-title">Signed settlement receipts for work that agents and humans can verify.</h1>
+                <h1 id="case-title">Settle paid work with a verifiable receipt.</h1>
                 <p id="case-copy">
-                  ProofJudge evaluates submitted work against explicit acceptance terms, runs inside EigenCompute, and emits a signed DecisionArtifact.
+                  ProofJudge evaluates explicit task terms and submitted evidence inside EigenCompute, then emits a signed DecisionArtifact that downstream systems can verify before releasing, holding, or rejecting payment.
                 </p>
               </div>
               <div class="settlement-gate" id="settlement-gate">
@@ -309,15 +366,15 @@
             <div class="registry-grid" id="registry-grid"></div>
 
             <div class="architecture-diagram" aria-label="Architecture diagram">
-              <div class="diagram-node">Work Terms</div>
-              <div class="diagram-arrow">to</div>
-              <div class="diagram-node">Submitted Evidence</div>
-              <div class="diagram-arrow">to</div>
+              <div class="diagram-node">Terms + Rubric</div>
+              <div class="diagram-arrow">-&gt;</div>
+              <div class="diagram-node">Submitted Work</div>
+              <div class="diagram-arrow">-&gt;</div>
               <div class="diagram-node strong">EigenCompute Judge</div>
-              <div class="diagram-arrow">to</div>
+              <div class="diagram-arrow">-&gt;</div>
               <div class="diagram-node">Signed DecisionArtifact</div>
-              <div class="diagram-arrow">to</div>
-              <div class="diagram-node strong">Verify / Tamper Check</div>
+              <div class="diagram-arrow">-&gt;</div>
+              <div class="diagram-node strong">Verify / Tamper / Settle</div>
             </div>
           </section>
 
@@ -335,7 +392,7 @@
               <div class="empty-state">No receipts generated in this browser yet.</div>
             </div>
 
-            <details class="json-drawer" open>
+            <details class="json-drawer">
               <summary>Signed JSON Drawer</summary>
               <pre id="artifact-pre">{}</pre>
             </details>
@@ -364,9 +421,9 @@
             </div>
 
             <ol class="demo-script">
-              <li>Agents are going to decide whether work gets paid. Who verifies the judge?</li>
+              <li>Agents are going to do paid work. The hard question is who verifies the acceptance judge.</li>
               <li>ProofJudge evaluates explicit task terms, rubric, and submitted evidence inside EigenCompute.</li>
-              <li>The result is a signed DecisionArtifact: decision, settlement action, model mode, hashes, app identity, and signature.</li>
+              <li>The result is a signed DecisionArtifact: settlement action, model mode, hashes, app identity, and signature.</li>
               <li>Verification proves the artifact body, hash, signature, and deployment identity still match.</li>
               <li>Changing the score breaks verification immediately. ProofJudge makes AI judgment accountable.</li>
             </ol>

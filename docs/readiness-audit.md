@@ -2,6 +2,8 @@
 
 Audit date: 2026-05-07
 
+Reverification date: 2026-05-09
+
 Objective: rebuild ProofJudge into a presentation-grade EigenCloud Private Preview submission using `docs/proofjudge-finish-line-master-plan.md` plus `docs/proofjudge-cinematic-entry-addendum.md` as local source material.
 
 ## Implementation Evidence
@@ -36,6 +38,16 @@ Objective: rebuild ProofJudge into a presentation-grade EigenCloud Private Previ
 | Visual QA | Desktop, tablet, mobile, guided flow, tamper flow, reduced motion captured from live Code deployment in `docs/live-demo-backups/` | Pass live |
 | Browser console | Live Playwright flow completed with `errors: []` | Pass |
 | Demo video | Captioned browser recording in `docs/demo-video/proofjudge-live-demo.webm` from live Code deployment | Complete |
+
+## 2026-05-09 Reverification
+
+| Check | Result |
+|---|---|
+| Local build and smoke | Pass: `npm run check` completed with `Smoke checks passed for all ProofJudge variants.` |
+| Live health checks | Pass: Code, Research, Negotiation, and Governance returned `ok: true`. |
+| Live judge and verify | Pass: all four deployments returned signed `llm / eigen-gateway` artifacts that verified successfully. |
+| Live tamper checks | Pass: all four deployments rejected modified receipts. |
+| Live attestation mode | Pass: all four deployments reported `eigencompute`. |
 
 ## Remaining Gaps
 

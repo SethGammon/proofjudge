@@ -31,8 +31,8 @@ const META = {
   code: {
     accent: "#37d67a",
     caseType: "Code Bounty",
-    title: "Judge a code bounty.",
-    copy: "Evaluate the submitted fix against the bounty terms, then seal the result as a verifiable receipt.",
+    title: "Settle a code bounty with proof.",
+    copy: "Evaluate submitted work against bounty terms inside EigenCompute, then seal the release, hold, or reject decision as a verifiable receipt.",
     labels: {
       bounty: "Task Terms",
       rubric: "Acceptance Rubric",
@@ -43,7 +43,7 @@ const META = {
     accent: "#5bb8ff",
     caseType: "Research Deliverable",
     title: "Accept research with evidence.",
-    copy: "Accept, reject, or flag unsupported claims against the promised evidence standard.",
+    copy: "Check submitted research against the promised evidence standard, then issue a receipt another team or agent can verify.",
     labels: {
       bounty: "Research Objective",
       rubric: "Evidence Standard",
@@ -54,7 +54,7 @@ const META = {
     accent: "#f0b84a",
     caseType: "Deal Terms",
     title: "Check deal-term compliance.",
-    copy: "Check required constraints before agreement and surface exceptions that block acceptance.",
+    copy: "Check required constraints before agreement and surface exceptions both counterparties can inspect in the signed receipt.",
     labels: {
       bounty: "Deal Context",
       rubric: "Required Terms",
@@ -65,7 +65,7 @@ const META = {
     accent: "#b692ff",
     caseType: "Governance Preflight",
     title: "Preflight a governance vote.",
-    copy: "Surface voting, treasury, and execution risk before a proposal reaches settlement.",
+    copy: "Surface voting, treasury, and execution risk before a proposal reaches a vote, then preserve the preflight result as a verifiable receipt.",
     labels: {
       bounty: "DAO / Protocol Context",
       rubric: "Governance Risk Rubric",
@@ -89,11 +89,150 @@ const PIPELINE_STEPS = [
   "Preparing verification receipt"
 ];
 
+const STORY_SCENES = [
+  {
+    id: "problem",
+    short: "Problem",
+    label: "Scene 1 / Problem",
+    title: "A builder finished paid bounty work.",
+    copy: "The sponsor wants to release payment, but a private chat or dashboard screenshot is not enough proof when money moves.",
+    points: [
+      "Builder or agent submits completed OAuth callback work.",
+      "Sponsor needs a neutral acceptance record.",
+      "Payment waits for proof the judge and receipt can be verified."
+    ],
+    duration: 6800
+  },
+  {
+    id: "submission",
+    short: "Submission",
+    label: "Scene 2 / Submission",
+    title: "The work package moves into ProofJudge.",
+    copy: "Task terms, rubric, submitted diff, and submitter identity become the input package for a verifiable judging run.",
+    points: [
+      "Terms and submitted work are captured together.",
+      "The input package can be hashed.",
+      "The sponsor no longer depends on a loose claim of completion."
+    ],
+    duration: 6600
+  },
+  {
+    id: "terms",
+    short: "Terms",
+    label: "Scene 3 / Terms",
+    title: "Acceptance terms lock before judgment.",
+    copy: "The rubric is explicit before funds move: state validation, token safety, tests, and documented failure modes.",
+    points: [
+      "Validate OAuth state parameter.",
+      "Avoid logging tokens.",
+      "Include tests and document failure modes."
+    ],
+    duration: 7000
+  },
+  {
+    id: "compute",
+    short: "EigenCompute",
+    label: "Scene 4 / EigenCompute",
+    title: "ProofJudge runs inside EigenCompute.",
+    copy: "The judging call is tied to an app identity, so the receipt can point back to the deployed evaluator that produced it.",
+    points: [
+      "Runtime: EigenCompute Mainnet Alpha.",
+      "App ID is carried into the receipt.",
+      "The live console preserves the same judge and verify APIs."
+    ],
+    duration: 7200
+  },
+  {
+    id: "receipt",
+    short: "Receipt",
+    label: "Scene 5 / Receipt",
+    title: "A signed DecisionArtifact appears.",
+    copy: "The output is not just a score. It includes decision, confidence, settlement action, hashes, app identity, and signature metadata.",
+    points: [
+      "Decision: pass, revise, or fail.",
+      "Settlement action: release, hold, reject, or escalate.",
+      "Artifact hash and signature make edits detectable."
+    ],
+    duration: 7300
+  },
+  {
+    id: "verify",
+    short: "Verify",
+    label: "Scene 6 / Verify",
+    title: "EigenVerify-style checks turn green.",
+    copy: "Verification checks the body, hash, signature, deployment identity, attestation mode, and timestamp before anyone trusts the receipt.",
+    points: [
+      "Body integrity still matches.",
+      "Signature and artifact hash verify.",
+      "The deployed app identity is visible."
+    ],
+    duration: 6900
+  },
+  {
+    id: "tamper",
+    short: "Tamper",
+    label: "Scene 7 / Tamper",
+    title: "Changing the score breaks verification.",
+    copy: "If someone edits the score after the receipt is sealed, the recomputed hash and signature checks fail clearly.",
+    points: [
+      "Original score and edited score diverge.",
+      "Artifact hash mismatch is visible.",
+      "Tamper failure protects the settlement record."
+    ],
+    duration: 7100
+  },
+  {
+    id: "live",
+    short: "Live",
+    label: "Scene 8 / Live Handoff",
+    title: "Now prove it live.",
+    copy: "The story hands into the real ProofJudge console, loads Code Bounty, and slowly runs judge, signed receipt, verify, and tamper failure.",
+    points: [
+      "Live Code Bounty case loads in the console.",
+      "The real /api/judge and /api/verify calls run.",
+      "Tamper failure is shown in the live verifier."
+    ],
+    duration: 5600
+  }
+];
+
+const STORY_ASSETS = {
+  builder: "/assets/demo/builder.svg",
+  sponsor: "/assets/demo/sponsor.svg",
+  compute: "/assets/demo/compute-node.svg",
+  receipt: "/assets/demo/receipt.svg",
+  verifier: "/assets/demo/verifier.svg",
+  tamper: "/assets/demo/tamper-fracture.svg"
+};
+
+const ENTRY_STORY_SCENES = {
+  terms: "terms",
+  compute: "compute",
+  receipt: "receipt",
+  verify: "verify",
+  live: "live"
+};
+
+const STORY_OPEN_MS = 520;
+const STORY_CLOSE_MS = 440;
+const STORY_REVEAL_BASE_MS = 90;
+const STORY_REVEAL_STEP_MS = 115;
+
 let currentVariant = "code";
 let currentView = "evaluate";
 let currentArtifact = null;
 let variantConfigs = {};
 let guidedRunning = false;
+let storyState = {
+  open: false,
+  index: 0,
+  autoplay: false,
+  timer: 0,
+  variant: "code",
+  liveRunning: false,
+  closeTimer: 0,
+  sequence: 0
+};
 let transitionChain = Promise.resolve();
 
 const refs = {
@@ -104,6 +243,26 @@ const refs = {
   skipEntryBtn: document.getElementById("skip-entry-btn"),
   enterConsoleBtn: document.getElementById("enter-console-btn"),
   runGuidedBtn: document.getElementById("run-guided-btn"),
+  entryVariantBtns: document.querySelectorAll("[data-entry-variant]"),
+  entryStoryBtns: document.querySelectorAll("[data-entry-story]"),
+  storyMode: document.getElementById("story-mode"),
+  storyCloseBtn: document.getElementById("story-close-btn"),
+  storyKicker: document.getElementById("story-kicker"),
+  storyTitle: document.getElementById("story-title"),
+  storyProgress: document.getElementById("story-progress"),
+  storyStepLabel: document.getElementById("story-step-label"),
+  storyHeading: document.getElementById("story-heading"),
+  storyCopy: document.getElementById("story-copy"),
+  storyPoints: document.getElementById("story-points"),
+  storyVisual: document.getElementById("story-visual"),
+  storyBackBtn: document.getElementById("story-back-btn"),
+  storyNextBtn: document.getElementById("story-next-btn"),
+  storyAutoplayBtn: document.getElementById("story-autoplay-btn"),
+  storyRestartBtn: document.getElementById("story-restart-btn"),
+  storySkipLiveBtn: document.getElementById("story-skip-live-btn"),
+  liveHandoffBanner: document.getElementById("live-handoff-banner"),
+  liveHandoffTitle: document.getElementById("live-handoff-title"),
+  liveHandoffCopy: document.getElementById("live-handoff-copy"),
   runtimePill: document.getElementById("runtime-pill"),
   headerVerifyLink: document.getElementById("header-verify-link"),
   configuredAppId: document.getElementById("configured-app-id"),
@@ -163,6 +322,7 @@ document.querySelectorAll("[data-variant]").forEach((button) => {
 
 document.querySelectorAll("[data-view]").forEach((button) => {
   button.addEventListener("click", () => {
+    clearToast();
     setView(button.dataset.view, { push: true });
   });
 });
@@ -186,15 +346,38 @@ document.addEventListener("click", (event) => {
   const href = link.getAttribute("href");
   if (!href || href.startsWith("http") || href.startsWith("#") || href.startsWith("//")) return;
   event.preventDefault();
+
+  if (href === "/" || link.dataset.showEntry !== undefined) {
+    showEntry({ push: true });
+    return;
+  }
+
   history.pushState(null, "", href);
   route();
 });
 
 window.addEventListener("popstate", route);
 
-refs.skipEntryBtn.addEventListener("click", () => enterConsole());
+refs.skipEntryBtn?.addEventListener("click", () => enterConsole());
 refs.enterConsoleBtn.addEventListener("click", () => enterConsole());
-refs.runGuidedBtn.addEventListener("click", () => runGuidedDemo("code"));
+refs.runGuidedBtn.addEventListener("click", () => runGuidedDemo(currentVariant));
+refs.entryVariantBtns.forEach((button) => {
+  button.addEventListener("click", () => selectEntryVariant(button.dataset.entryVariant));
+});
+refs.entryStoryBtns.forEach((button) => {
+  button.addEventListener("click", () => openStoryMode(currentVariant, { startScene: button.dataset.entryStory }));
+});
+refs.storyCloseBtn.addEventListener("click", () => closeStoryMode());
+refs.storyBackBtn.addEventListener("click", () => previousStoryScene());
+refs.storyNextBtn.addEventListener("click", () => nextStoryScene());
+refs.storyAutoplayBtn.addEventListener("click", () => toggleStoryAutoplay());
+refs.storyRestartBtn.addEventListener("click", () => restartStoryMode());
+refs.storySkipLiveBtn.addEventListener("click", () => startLiveHandoff({ source: "skip" }));
+refs.storyProgress.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-story-jump]");
+  if (!button) return;
+  goToStoryScene(Number(button.dataset.storyJump), Number(button.dataset.storyJump) >= storyState.index ? "forward" : "back");
+});
 refs.loadDemoBtn.addEventListener("click", () => loadDemo(currentVariant));
 refs.clearFormBtn.addEventListener("click", () => {
   refs.form.reset();
@@ -218,6 +401,11 @@ refs.form.addEventListener("submit", async (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (storyState.open) {
+    handleStoryKeydown(event);
+    return;
+  }
+
   if (!guidedRunning && event.key !== "Escape") return;
   if (event.key === "r" || event.key === "R") resetGuidedDemo();
   if (event.key === "v" || event.key === "V") verifyCurrentReceipt();
@@ -271,25 +459,8 @@ refs.verifyPasteBtn.addEventListener("click", async () => {
   }
 });
 
-refs.tamperBtn.addEventListener("click", async () => {
-  if (!currentArtifact) return;
-  const tampered = JSON.parse(JSON.stringify(currentArtifact));
-  const originalScore = tampered.score;
-  tampered.score = originalScore < 100 ? originalScore + 1 : 0;
-
-  try {
-    const data = await apiFetch("/api/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ artifact: tampered })
-    });
-    renderVerification(data.verification, tampered);
-    renderTamperDiff(currentArtifact, tampered, data.verification);
-    setView("verify", { push: true });
-  } catch (error) {
-    refs.tamperDiff.hidden = false;
-    refs.tamperDiff.innerHTML = failRow("Tamper test", error.message);
-  }
+refs.tamperBtn.addEventListener("click", () => {
+  tamperCurrentReceipt();
 });
 
 refs.copyJsonBtn.addEventListener("click", async () => {
@@ -330,12 +501,16 @@ async function init() {
   await route({ transition: false });
   await loadDemo(currentVariant, { transition: false });
   pingRuntime();
-  if (window.location.pathname.startsWith("/agents/") || sessionStorage.getItem("proofjudge.entry.dismissed") === "true") {
+  if (window.location.pathname.startsWith("/agents/")) {
     refs.entryLayer.hidden = true;
   }
 }
 
-function enterConsole() {
+function enterConsole(options = {}) {
+  closeStoryMode({ silent: true });
+  if (options.push !== false && !window.location.pathname.startsWith("/agents/")) {
+    history.pushState(null, "", `/agents/${currentVariant}#${currentView}`);
+  }
   if (refs.entryLayer.hidden) return;
   window.scrollTo({ top: 0, behavior: "auto" });
   refs.entryLayer.classList.add("leaving");
@@ -345,40 +520,420 @@ function enterConsole() {
   }, prefersReducedMotion() ? 1 : 520);
 }
 
-async function runGuidedDemo(variant = "code") {
-  if (!META[variant] || guidedRunning) return;
+function showEntry(options = {}) {
+  guidedRunning = false;
+  closeStoryMode({ silent: true });
+  clearSpotlights();
+  clearToast();
+  hideLiveHandoffBanner();
+  sessionStorage.removeItem("proofjudge.entry.dismissed");
+
+  if (options.push && (window.location.pathname !== "/" || window.location.search || window.location.hash)) {
+    history.pushState(null, "", "/");
+  }
+
+  refs.entryLayer.hidden = false;
+  refs.entryLayer.classList.remove("leaving");
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+function runGuidedDemo(variant = currentVariant) {
+  openStoryMode(variant);
+}
+
+function openStoryMode(variant = "code", options = {}) {
+  if (storyState.liveRunning) return;
+  window.clearTimeout(storyState.closeTimer);
+  storyState.open = true;
+  storyState.variant = variant;
+  storyState.index = storySceneIndex(options.startScene);
+  storyState.autoplay = false;
+  window.clearTimeout(storyState.timer);
+  refs.storyMode.hidden = false;
+  refs.storyMode.classList.remove("closing");
+  refs.entryLayer.classList.add("story-launching");
+  document.body.classList.add("story-open");
+  refs.storyKicker.textContent = "Code Bounty Escrow";
+  renderStoryScene({ direction: "forward" });
+  window.requestAnimationFrame(() => {
+    refs.storyMode.classList.add("active");
+  });
+}
+
+function storySceneIndex(sceneId) {
+  if (!sceneId) return 0;
+  const resolvedId = ENTRY_STORY_SCENES[sceneId] ?? sceneId;
+  const index = STORY_SCENES.findIndex((scene) => scene.id === resolvedId);
+  return index >= 0 ? index : 0;
+}
+
+function selectEntryVariant(variant) {
+  if (!META[variant]) return;
+  selectVariant(variant, { push: false, transition: false });
+}
+
+function updateEntryVariantSelection(variant) {
+  refs.entryVariantBtns.forEach((button) => {
+    const active = button.dataset.entryVariant === variant;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  document.querySelectorAll(".entry-receipt-card").forEach((card, index) => {
+    const order = ["code", "research", "negotiation", "governance"];
+    const active = order[index] === variant;
+    card.classList.toggle("selected", active);
+  });
+}
+
+function closeStoryMode(options = {}) {
+  if (!storyState.open && refs.storyMode.hidden) return;
+  pauseStoryAutoplay();
+  storyState.open = false;
+  refs.storyMode.classList.remove("active", "is-sequencing");
+  refs.storyMode.classList.add("closing");
+  window.clearTimeout(storyState.closeTimer);
+  const finish = () => {
+    refs.storyMode.hidden = true;
+    refs.storyMode.classList.remove("closing");
+    refs.entryLayer.classList.remove("story-launching");
+  };
+  if (options.instant || prefersReducedMotion()) {
+    finish();
+  } else {
+    storyState.closeTimer = window.setTimeout(finish, STORY_CLOSE_MS);
+  }
+  document.body.classList.remove("story-open");
+  if (!options.silent) {
+    refs.runGuidedBtn?.focus({ preventScroll: true });
+  }
+}
+
+function renderStoryScene(options = {}) {
+  const scene = STORY_SCENES[storyState.index] ?? STORY_SCENES[0];
+  storyState.sequence += 1;
+  refs.storyMode.dataset.scene = scene.id;
+  refs.storyMode.dataset.direction = options.direction ?? "forward";
+  refs.storyMode.dataset.sequence = String(storyState.sequence);
+  refs.storyTitle.textContent = scene.title;
+  refs.storyStepLabel.textContent = scene.label;
+  refs.storyHeading.textContent = scene.title;
+  refs.storyCopy.textContent = scene.copy;
+  refs.storyPoints.innerHTML = scene.points.map((point) => `<span>${esc(point)}</span>`).join("");
+  refs.storyVisual.innerHTML = renderStoryVisual(scene);
+  stampStoryRevealSequence();
+  refs.storyBackBtn.disabled = storyState.index === 0 || storyState.liveRunning;
+  refs.storyNextBtn.disabled = storyState.liveRunning;
+  refs.storyNextBtn.textContent = storyState.index === STORY_SCENES.length - 1 ? "Now Prove It Live" : "Next";
+  refs.storyAutoplayBtn.textContent = storyState.autoplay ? "Pause" : "Auto-play";
+  refs.storyAutoplayBtn.disabled = storyState.liveRunning;
+  refs.storyRestartBtn.disabled = storyState.liveRunning;
+  refs.storySkipLiveBtn.disabled = storyState.liveRunning;
+  refs.storyProgress.innerHTML = STORY_SCENES.map((item, index) => `
+    <button type="button" class="${index === storyState.index ? "active" : ""}" data-story-jump="${index}" ${storyState.liveRunning ? "disabled" : ""}>
+      <span>${index + 1}</span>
+      <small>${esc(item.short)}</small>
+    </button>
+  `).join("");
+
+  if (storyState.autoplay) {
+    scheduleStoryAutoplay(scene);
+  }
+}
+
+function goToStoryScene(index, direction = "forward") {
+  if (storyState.liveRunning) return;
+  const nextIndex = Math.max(0, Math.min(STORY_SCENES.length - 1, index));
+  if (nextIndex === storyState.index && storyState.open) {
+    renderStoryScene({ direction });
+    return;
+  }
+  pauseStoryAutoplay();
+  storyState.index = nextIndex;
+  renderStoryScene({ direction });
+}
+
+function stampStoryRevealSequence() {
+  const fixedReveals = [
+    [refs.storyStepLabel, 0, "meta"],
+    [refs.storyHeading, 1, "headline"],
+    [refs.storyCopy, 2, "copy"],
+    [refs.storyVisual, 3, "panel"]
+  ];
+
+  fixedReveals.forEach(([element, order, type]) => setStoryReveal(element, order, type));
+  refs.storyPoints.querySelectorAll("span").forEach((point, index) => {
+    setStoryReveal(point, index + 4, "point");
+  });
+
+  refs.storyMode.classList.remove("is-sequencing");
+  void refs.storyMode.offsetWidth;
+  refs.storyMode.classList.add("is-sequencing");
+}
+
+function setStoryReveal(element, order, type = "item") {
+  if (!element) return;
+  element.dataset.reveal = type;
+  element.style.setProperty("--reveal-delay", `${storyRevealDelay(order)}ms`);
+}
+
+function storyRevealDelay(order) {
+  if (prefersReducedMotion()) return 0;
+  return STORY_REVEAL_BASE_MS + order * STORY_REVEAL_STEP_MS;
+}
+
+function storyRevealAttr(order, type = "item", extraStyle = "") {
+  const style = [`--reveal-delay:${storyRevealDelay(order)}ms`];
+  if (extraStyle) style.push(extraStyle);
+  return `data-reveal="${type}" style="${style.join(";")}"`;
+}
+
+function renderStoryVisual(scene) {
+  const appId = shortAddress(APP_REGISTRY.code.appId);
+  if (scene.id === "problem") {
+    return `
+      <div class="story-stage story-stage-problem">
+        <div class="story-actor" ${storyRevealAttr(4, "actor-left")}>
+          <img src="${STORY_ASSETS.builder}" alt="" />
+          <strong>Builder / agent</strong>
+          <span>Work complete</span>
+        </div>
+        <div class="story-payment-line" ${storyRevealAttr(5, "bridge")}>
+          <span>Payment waits</span>
+          <i></i>
+          <small>proof required</small>
+        </div>
+        <div class="story-actor sponsor" ${storyRevealAttr(6, "actor-right")}>
+          <img src="${STORY_ASSETS.sponsor}" alt="" />
+          <strong>Sponsor</strong>
+          <span>Needs acceptance proof</span>
+        </div>
+      </div>
+    `;
+  }
+
+  if (scene.id === "submission") {
+    return `
+      <div class="story-stage story-stage-submission">
+        <div class="story-actor compact" ${storyRevealAttr(4, "sender")}>
+          <img src="${STORY_ASSETS.builder}" alt="" />
+          <strong>Builder</strong>
+        </div>
+        <div class="story-work-package" ${storyRevealAttr(5, "package")}>
+          <span ${storyRevealAttr(6, "package-item")}>Code diff</span>
+          <span ${storyRevealAttr(7, "package-item")}>Task terms</span>
+          <span ${storyRevealAttr(8, "package-item")}>Rubric</span>
+          <span ${storyRevealAttr(9, "package-item")}>Submitter</span>
+        </div>
+        <div class="story-compute-card" ${storyRevealAttr(10, "receiver")}>
+          <img src="${STORY_ASSETS.compute}" alt="" />
+          <strong>ProofJudge</strong>
+          <small>Input package accepted</small>
+        </div>
+      </div>
+    `;
+  }
+
+  if (scene.id === "terms") {
+    return `
+      <div class="story-stage story-stage-terms">
+        ${["State validation", "Token safety", "Unit tests", "Failure docs"].map((term, index) => `
+          <div class="story-term-card" ${storyRevealAttr(index + 4, "lock-card", `--term-delay:${index * 110}ms`)}>
+            <span>LOCKED</span>
+            <strong>${term}</strong>
+            <small>Acceptance term ${index + 1}</small>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  if (scene.id === "compute") {
+    return `
+      <div class="story-stage story-stage-compute">
+        <div class="story-compute-core" ${storyRevealAttr(4, "compute-core")}>
+          <img src="${STORY_ASSETS.compute}" alt="" />
+          <strong>EigenCompute Judge</strong>
+          <span>App ID ${appId}</span>
+        </div>
+        <div class="story-app-facts" ${storyRevealAttr(5, "fact-stack")}>
+          <span ${storyRevealAttr(6, "fact")}>Runtime identity</span>
+          <span ${storyRevealAttr(7, "fact")}>Receipt signer</span>
+          <span ${storyRevealAttr(8, "fact")}>Attestation mode</span>
+        </div>
+      </div>
+    `;
+  }
+
+  if (scene.id === "receipt") {
+    return `
+      <div class="story-stage story-stage-receipt">
+        <div class="story-receipt-card" ${storyRevealAttr(4, "receipt-shell")}>
+          <img src="${STORY_ASSETS.receipt}" alt="" ${storyRevealAttr(5, "seal-icon")} />
+          <span ${storyRevealAttr(6, "receipt-label")}>DecisionArtifact</span>
+          <strong ${storyRevealAttr(7, "stamp")}>PASS</strong>
+          <dl>
+            <div ${storyRevealAttr(8, "receipt-row")}><dt>Score</dt><dd>92 / 100</dd></div>
+            <div ${storyRevealAttr(9, "receipt-row")}><dt>Settlement</dt><dd>Release payment</dd></div>
+            <div ${storyRevealAttr(10, "receipt-row")}><dt>App ID</dt><dd>${appId}</dd></div>
+            <div ${storyRevealAttr(11, "receipt-row")}><dt>Hash</dt><dd>0x8f3a...c91e</dd></div>
+            <div ${storyRevealAttr(12, "receipt-row")}><dt>Signature</dt><dd>HMAC-SHA256</dd></div>
+          </dl>
+        </div>
+      </div>
+    `;
+  }
+
+  if (scene.id === "verify") {
+    return `
+      <div class="story-stage story-stage-verify">
+        <div class="story-verify-panel" ${storyRevealAttr(4, "verify-panel")}>
+          <img src="${STORY_ASSETS.verifier}" alt="" ${storyRevealAttr(5, "seal-icon")} />
+          <strong ${storyRevealAttr(6, "receipt-label")}>EigenVerify checks</strong>
+          ${["Body integrity", "Artifact hash", "Signature", "App identity", "Timestamp"].map((check, index) => `
+            <div class="story-check ok" ${storyRevealAttr(index + 7, "check")}><span>PASS</span><small>${check}</small></div>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  if (scene.id === "tamper") {
+    return `
+      <div class="story-stage story-stage-tamper">
+        <div class="story-tamper-card original" ${storyRevealAttr(4, "tamper-left")}>
+          <img src="${STORY_ASSETS.receipt}" alt="" />
+          <span>Original score</span>
+          <strong>92</strong>
+        </div>
+        <div class="story-fracture" ${storyRevealAttr(5, "fracture")}>
+          <img src="${STORY_ASSETS.tamper}" alt="" />
+          <strong>FAIL</strong>
+          <small>Hash mismatch</small>
+        </div>
+        <div class="story-tamper-card edited" ${storyRevealAttr(6, "tamper-right")}>
+          <img src="${STORY_ASSETS.receipt}" alt="" />
+          <span>Edited score</span>
+          <strong>99</strong>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="story-stage story-stage-live">
+      <div class="story-live-console" ${storyRevealAttr(4, "console")}>
+        <span ${storyRevealAttr(5, "console-label")}>Live console</span>
+        <strong ${storyRevealAttr(6, "console-title")}>Code Bounty Settlement</strong>
+        <ol>
+          <li ${storyRevealAttr(7, "console-step")}>Load demo case</li>
+          <li ${storyRevealAttr(8, "console-step")}>Generate signed receipt</li>
+          <li ${storyRevealAttr(9, "console-step")}>Verify receipt</li>
+          <li ${storyRevealAttr(10, "console-step")}>Tamper score and fail verification</li>
+        </ol>
+      </div>
+    </div>
+  `;
+}
+
+function nextStoryScene() {
+  if (storyState.index >= STORY_SCENES.length - 1) {
+    pauseStoryAutoplay();
+    startLiveHandoff({ source: "next" });
+    return;
+  }
+  goToStoryScene(storyState.index + 1, "forward");
+}
+
+function previousStoryScene() {
+  goToStoryScene(storyState.index - 1, "back");
+}
+
+function restartStoryMode() {
+  goToStoryScene(0, "back");
+}
+
+function toggleStoryAutoplay() {
+  if (storyState.autoplay) {
+    pauseStoryAutoplay();
+    renderStoryScene({ direction: "forward" });
+    return;
+  }
+
+  storyState.autoplay = true;
+  renderStoryScene({ direction: "forward" });
+}
+
+function pauseStoryAutoplay() {
+  storyState.autoplay = false;
+  window.clearTimeout(storyState.timer);
+}
+
+function scheduleStoryAutoplay(scene) {
+  window.clearTimeout(storyState.timer);
+  storyState.timer = window.setTimeout(() => {
+    if (!storyState.open || !storyState.autoplay) return;
+    if (storyState.index >= STORY_SCENES.length - 1) {
+      startLiveHandoff({ source: "autoplay" });
+      return;
+    }
+    storyState.index += 1;
+    renderStoryScene({ direction: "forward" });
+  }, prefersReducedMotion() ? Math.min(scene.duration, 900) : scene.duration);
+}
+
+function handleStoryKeydown(event) {
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    nextStoryScene();
+  }
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    previousStoryScene();
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeStoryMode();
+  }
+}
+
+async function startLiveHandoff(options = {}) {
+  if (storyState.liveRunning) return;
+  storyState.liveRunning = true;
   guidedRunning = true;
-  enterConsole();
-  await selectVariant(variant, { push: true, loadDemo: true });
-  await setView("demo", { push: true });
-  updateGuidedStatus(`Loading ${APP_REGISTRY[variant].label}`);
+  pauseStoryAutoplay();
+  renderStoryScene();
+  showLiveHandoffBanner("Preparing live console", "Loading the Code Bounty scenario before the real judge call.");
+  closeStoryMode({ silent: true });
+  currentView = "evaluate";
+  enterConsole({ push: false });
 
   try {
-    await wait(prefersReducedMotion() ? 20 : 260);
+    await selectVariant("code", { push: true, loadDemo: true });
     await setView("evaluate", { push: true });
+    await loadDemo("code", { transition: false });
+    updateGuidedStatus(options.source === "skip" ? "Skipped to live console" : "Live handoff running");
 
-    await spotlightField("bountyDescription", "Acceptance terms locked");
-    await spotlightField("rubric", "Rubric checks ready");
-    await spotlightField("submittedArtifact", "Submitted work staged");
-
-    updateGuidedStatus("Calling /api/judge");
+    await wait(prefersReducedMotion() ? 30 : 1100);
+    showLiveHandoffBanner("Live judge running", "Calling /api/judge to create the signed DecisionArtifact.");
     await generateReceipt({ guided: true });
-    await wait(prefersReducedMotion() ? 20 : 360);
 
-    updateGuidedStatus("Calling /api/verify");
+    await wait(prefersReducedMotion() ? 30 : 1400);
+    showLiveHandoffBanner("Signed receipt generated", "Opening verifier and calling /api/verify against the live artifact.");
     await verifyCurrentReceipt();
-    await wait(prefersReducedMotion() ? 20 : 360);
 
-    updateGuidedStatus("Running tamper test");
-    refs.tamperBtn.click();
-    await wait(prefersReducedMotion() ? 20 : 360);
+    await wait(prefersReducedMotion() ? 30 : 1500);
+    showLiveHandoffBanner("Tamper test running", "Editing the score after sealing to prove verification fails.");
+    await tamperCurrentReceipt({ guided: true });
 
-    updateGuidedStatus("Receipt, verifier, and tamper failure ready");
+    showLiveHandoffBanner("Live proof complete", "Judge, signed receipt, verification, and tamper failure all ran in the real console.", "done");
+    updateGuidedStatus("Live proof complete");
   } catch (error) {
+    showLiveHandoffBanner("Live handoff failed", error.message, "error");
     showToast(`Guided demo failed: ${error.message}`, "error");
     updateGuidedStatus("Failed");
   } finally {
     guidedRunning = false;
+    storyState.liveRunning = false;
     clearSpotlights();
   }
 }
@@ -386,6 +941,7 @@ async function runGuidedDemo(variant = "code") {
 function resetGuidedDemo() {
   guidedRunning = false;
   clearSpotlights();
+  hideLiveHandoffBanner();
   resetReceipt();
   resetVerification();
   loadDemo(currentVariant, { transition: false });
@@ -405,6 +961,18 @@ async function spotlightField(name, status) {
 
 function clearSpotlights() {
   document.querySelectorAll(".spotlight").forEach((element) => element.classList.remove("spotlight"));
+}
+
+function showLiveHandoffBanner(title, copy, tone = "active") {
+  refs.liveHandoffBanner.hidden = false;
+  refs.liveHandoffBanner.className = `live-handoff-banner ${tone}`;
+  refs.liveHandoffTitle.textContent = title;
+  refs.liveHandoffCopy.textContent = copy;
+}
+
+function hideLiveHandoffBanner() {
+  refs.liveHandoffBanner.hidden = true;
+  refs.liveHandoffBanner.className = "live-handoff-banner";
 }
 
 function updateGuidedStatus(status) {
@@ -437,6 +1005,7 @@ function transitionSurface(update, options = {}) {
 }
 
 function route(options = {}) {
+  syncEntryLayerWithRoute();
   const match = window.location.pathname.match(/^\/agents\/(\w+)$/);
   const variant = match && META[match[1]] ? match[1] : "code";
   const hashView = window.location.hash.replace("#", "");
@@ -454,10 +1023,25 @@ function route(options = {}) {
   return options.transition === false ? update() : transitionSurface(update);
 }
 
+function syncEntryLayerWithRoute() {
+  if (window.location.pathname.startsWith("/agents/")) {
+    sessionStorage.setItem("proofjudge.entry.dismissed", "true");
+    refs.entryLayer.hidden = true;
+    refs.entryLayer.classList.remove("leaving");
+    return;
+  }
+
+  if (window.location.pathname === "/") {
+    refs.entryLayer.hidden = false;
+    refs.entryLayer.classList.remove("leaving");
+  }
+}
+
 async function selectVariant(variant, options = {}) {
   if (!META[variant]) return;
   const changed = currentVariant !== variant;
   currentVariant = variant;
+  updateEntryVariantSelection(variant);
   const meta = META[variant];
   const app = APP_REGISTRY[variant];
   let demoData = null;
@@ -698,7 +1282,7 @@ function resetReceipt() {
 async function verifyCurrentReceipt() {
   if (!currentArtifact) return;
   await verifyArtifact(currentArtifact, { source: "current" });
-  setView("verify", { push: true });
+  await setView("verify", { push: true });
 }
 
 async function verifyArtifact(artifact, options = {}) {
@@ -730,14 +1314,46 @@ function renderVerification(verification, artifact) {
       <strong>${verification.ok ? "Verified" : "Verification failed"}</strong>
       <span>${esc(verification.message)}</span>
     </div>
-    ${rows.map((check, index) => `
-      <div class="verify-row ${check.ok ? "ok" : "fail"}" style="--row-delay:${index * 45}ms">
-        <span>${check.ok ? "PASS" : "FAIL"}</span>
+    ${rows.map((check, index) => {
+      const state = verificationRowState(check);
+      return `
+      <div class="verify-row ${state}" style="--row-delay:${index * 45}ms">
+        <span>${state === "ok" ? "PASS" : state === "warn" ? "WARN" : "FAIL"}</span>
         <strong>${esc(check.label)}</strong>
         <small>${esc(check.detail)}</small>
       </div>
-    `).join("")}
+    `;
+    }).join("")}
   `;
+}
+
+function verificationRowState(check) {
+  if (check.ok) return "ok";
+  return check.label === "Attestation status" ? "warn" : "fail";
+}
+
+async function tamperCurrentReceipt() {
+  if (!currentArtifact) return;
+  const tampered = JSON.parse(JSON.stringify(currentArtifact));
+  const originalScore = tampered.score;
+  tampered.score = originalScore < 100 ? originalScore + 1 : 0;
+
+  try {
+    const data = await apiFetch("/api/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artifact: tampered })
+    });
+    renderVerification(data.verification, tampered);
+    renderTamperDiff(currentArtifact, tampered, data.verification);
+    showToast("Tamper detected. Receipt no longer verifies.", "error");
+    await setView("verify", { push: true });
+    return data.verification;
+  } catch (error) {
+    refs.tamperDiff.hidden = false;
+    refs.tamperDiff.innerHTML = failRow("Tamper test", error.message);
+    throw error;
+  }
 }
 
 function renderTamperDiff(original, tampered, verification) {
@@ -941,6 +1557,11 @@ function showToast(message, tone = "ok") {
   showToast.timer = window.setTimeout(() => {
     refs.toast.hidden = true;
   }, 3200);
+}
+
+function clearToast() {
+  window.clearTimeout(showToast.timer);
+  refs.toast.hidden = true;
 }
 
 init();

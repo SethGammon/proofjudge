@@ -10,4 +10,5 @@ These are presentation backup assets for the new Settlement Console UI:
 4. `04-verified-receipt-desktop.png` - verifier success state
 5. `05-tamper-detected-desktop.png` - tamper failure state
 
-Live deployment screenshots still need to be recaptured after the new UI is deployed publicly.
+Live deployment screenshots were recaptured after public deployment and are available in
+`docs/live-demo-backups/`.

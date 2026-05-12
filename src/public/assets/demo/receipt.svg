@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Signed receipt">
+  <rect width="160" height="160" rx="18" fill="#0b100d"/>
+  <path d="M45 24h70v112l-12-8-12 8-11-8-12 8-11-8-12 8V24z" fill="#111611" stroke="#37d67a" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M60 52h40M60 70h34M60 88h40" stroke="#edf2ea" stroke-opacity=".7" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="104" cy="110" r="17" fill="#37d67a" opacity=".2" stroke="#37d67a" stroke-width="4"/>
+  <path d="M96 110l6 6 12-17" fill="none" stroke="#37d67a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

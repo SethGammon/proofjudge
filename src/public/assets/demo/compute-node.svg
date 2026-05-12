@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="EigenCompute node">
+  <rect width="160" height="160" rx="18" fill="#081012"/>
+  <rect x="42" y="42" width="76" height="76" rx="14" fill="#101a1d" stroke="#5bb8ff" stroke-width="5"/>
+  <rect x="58" y="58" width="44" height="44" rx="8" fill="#0b1112" stroke="#37d67a" stroke-width="4"/>
+  <path d="M80 20v22M80 118v22M20 80h22M118 80h22M36 36l16 16M124 36l-16 16M36 124l16-16M124 124l-16-16" stroke="#edf2ea" stroke-opacity=".52" stroke-width="5" stroke-linecap="round"/>
+  <path d="M70 80l7 7 15-19" fill="none" stroke="#37d67a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

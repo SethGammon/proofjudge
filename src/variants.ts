@@ -22,11 +22,11 @@ export const variants: Record<AgentVariant, VariantConfig> = {
     tagline: "Verifiable review for code bounties and PRs.",
     icon: "{ }",
     accent: "#00ff9d",
-    problemStatement: "AI slop floods bug bounty inboxes — curl ended their HackerOne program after 8× more reports, only 5% real. Gitcoin puts payment on-chain but evaluation off-chain with no audit trail. ProofJudge Code produces a signed, per-criterion verdict that anyone can verify.",
+    problemStatement: "AI slop floods bug bounty inboxes. Payment workflows can move value on-chain while acceptance still depends on off-chain evaluation with weak audit trails. ProofJudge Code produces a signed, per-criterion verdict that anyone can verify.",
     bullets: [
       "Rubric-based scoring per criterion, not holistic guessing",
       "Security surface check: injection, auth, credential handling",
-      "Signed reasoning trace — every flag is auditable"
+      "Signed reasoning trace - every flag is auditable"
     ],
     sampleBounty: "Ship a GitHub OAuth callback fix with clear error handling and tests.",
     sampleRubric: "Must validate state parameter, avoid logging tokens, include unit tests covering happy path and error cases, and document failure modes in README.",
@@ -39,12 +39,12 @@ export const variants: Record<AgentVariant, VariantConfig> = {
     id: "research",
     name: "ProofJudge Research",
     tagline: "Claims require sources. Sources require verification.",
-    icon: "◎",
+    icon: "O",
     accent: "#38bdf8",
-    problemStatement: "17–33% of AI legal research tools hallucinate citations. NeurIPS 2025 had 100+ fabricated citations in accepted papers. ProofJudge Research traces each claim to its source using the CAE framework and signs the evaluation.",
+    problemStatement: "AI research tools can hallucinate citations or overstate support. ProofJudge Research traces claims to evidence using the CAE framework and signs the evaluation.",
     bullets: [
       "CAE framework: Claims, Arguments, Evidence decomposition",
-      "Source support check — cited ≠ supported",
+      "Source support check - cited does not always mean supported",
       "Risk coverage and assumption separation scored separately"
     ],
     sampleBounty: "Produce a sourced brief on verifiable AI infrastructure for agent wallets.",
@@ -58,13 +58,13 @@ export const variants: Record<AgentVariant, VariantConfig> = {
     id: "negotiation",
     name: "ProofJudge Negotiation",
     tagline: "Neutral ground. Both parties can verify.",
-    icon: "⚖",
+    icon: "=",
     accent: "#fbbf24",
-    problemStatement: "Harvey, Ironclad, and ContractPodAi all serve one party. There is no neutral evaluator both sides can trust. ProofJudge Negotiation is not a participant — it's the first party-neutral completeness check, and both parties can verify the same signed rubric was applied.",
+    problemStatement: "Most negotiation tools serve one party. ProofJudge Negotiation is not a participant; it is a party-neutral completeness check where both sides can verify that the same signed rubric was applied.",
     bullets: [
       "Completeness scoring: every required term addressed?",
-      "Party-neutral — not deployed by either side",
-      "Same model hash applied to all proposals — verifiable consistency"
+      "Party-neutral - not deployed by either side",
+      "Same model hash applied to all proposals - verifiable consistency"
     ],
     sampleBounty: "Evaluate a vendor proposal against price, delivery, IP ownership, and fallback constraints.",
     sampleRubric: "Must respect the $50k budget cap, include a 30-day fallback delivery clause, preserve IP ownership for the buyer, define payment milestones, and identify any unacceptable concessions.",
@@ -77,13 +77,13 @@ export const variants: Record<AgentVariant, VariantConfig> = {
     id: "governance",
     name: "ProofJudge Governance",
     tagline: "Proposals verified before votes are cast.",
-    icon: "⬡",
+    icon: "^",
     accent: "#c084fc",
-    problemStatement: "Compound GoldenBoyz redirected $25M through coordinated governance manipulation. Beanstalk lost $182M in a single flash loan attack. ProofJudge Governance produces a signed risk assessment — treasury exposure, attack surface, feasibility — before any vote opens.",
+    problemStatement: "Governance proposals can move treasury funds or alter protocol controls before many voters understand the risk. ProofJudge Governance produces a signed preflight assessment covering treasury exposure, attack surface, and feasibility before a vote opens.",
     bullets: [
       "Treasury risk, attack vector, and feasibility scoring",
       "Signed verdict published on-chain before vote opens",
-      "Same rubric applied to all proposals — no information asymmetry"
+      "Same rubric applied to all proposals - no information asymmetry"
     ],
     sampleBounty: "Evaluate this DAO governance proposal to fund a 6-week security audit of the lending protocol smart contracts.",
     sampleRubric: "Must specify budget cap, auditor selection criteria, quorum threshold, 48-hour timelock, multisig execution mechanism, and protocol response plan if critical issues are found.",
