@@ -32,27 +32,66 @@ Screenshot it at full res for the tweet's static fallback.
 
 ---
 
-## 2. Tweet copy
+## 2. The v5 video (facecam over autoplay) + thread
 
-**FINAL (pairs with promo v4 — send this one to Mustafa):**
-> AI agents are starting to decide who gets paid.
->
-> So who verifies the judge?
->
-> ProofJudge runs the verdict inside an EigenCompute TEE and seals it as a signed receipt anyone can re-verify before money moves.
->
-> At 0:39 I edit one byte of a sealed verdict. Watch what the seal does. 🧾
->
-> Proof, not promises.
+Per Mustafa's feedback (face + voice performs best; copy = Hook / Problem / Solution, links in
+tweet 2, build detail in tweet 3).
 
-No links in the body (links suppress reach) — put the four live judges + EigenVerify links in a
-**pinned first reply**: "the receipts in the video are real — verify them yourself." Confirm with
-Mustafa which handle to tag (@eigenlayer vs the EigenCloud account) — tag whichever account will
-quote-tweet so the algorithm links the posts.
+**Video:** screen-record the console's choreographed Auto-play (live deployment, stage Sound ON),
+then film a facecam talk track and composite it as a rounded container bottom-left.
+Pipeline: `.planning/video-v5/composite.mjs <screen.mp4> <face.mp4> [voiceDelaySec] [--circle]`
+→ `proofjudge-promo-v5.mp4` (1080p60, voice-ducked demo audio, −16 LUFS). Tested and working.
 
-**Short alt:**
-> Agents are deciding who gets paid. Nobody's verifying the judge. So I built one that can't lie
-> about its verdicts — sealed in an EigenCompute TEE, broken by a single edited byte. 0:39. 🧾
+**Talk track (timed to the autoplay acts, ~45s — conversational, not a VO read):**
+| Act | Say |
+|---|---|
+| The question | "AI agents are starting to decide who gets paid. Nobody's verifying the judge. So I built one you can check." |
+| The case file | "This is a real case — the terms, the rubric for *done*, and the work that actually arrived." |
+| The judgment | "The judgment runs inside a trusted execution environment on EigenCompute — attested compute, under an identity anyone can inspect." |
+| The receipt | "The verdict prints as a signed receipt. Score, hashes, judge identity — sealed." |
+| The proof | "Anyone can re-verify it against the live judge. Every check passes." |
+| The tamper | "Now watch — I change the score by one point…" *(pause for the slam)* "…and verification fails. The hash breaks, the signature breaks. Money doesn't move." |
+| The point | "Proof, not promises. It's live — links below if you want to try to cheat it yourself." |
+
+**Recording checklist:** ① record the screen first (live deployment — local shows DEMO mode and
+100/100 scores; OBS, 1920×1080, capture tab audio, Sound on → Auto-play, hands off). ② Play that
+capture back on a second screen while filming the facecam — talking to the playback gets natural
+timing for free. ③ `node composite.mjs screen.mp4 face.mp4` (third arg nudges voice sync ±s).
+If the autoplay feels tight to talk over, the per-act `beat()` values in `main.js` are one-number
+stretches.
+
+### Tweet 1 — Hook / Problem / Solution (+ video)
+> I built an AI judge. Then I tried to cheat it.
+>
+> AI agents are starting to do paid work — and acceptance is the fragile part. Who judged it? Was the verdict changed? Can anyone check before money moves?
+>
+> ProofJudge decides inside an EigenCompute TEE and seals every verdict as a signed, tamper-evident receipt.
+>
+> At 0:XX I edit one byte. Watch what happens.
+
+*(fill 0:XX with the tamper timestamp from the final cut; no links in tweet 1 — links suppress reach)*
+
+### Tweet 2 — the links
+> Try to cheat it yourself — all four judges are live on EigenCompute, and the receipts in the video are real:
+>
+> Code · Research · Negotiation · Governance: [live links]
+>
+> Each judge's TEE identity is publicly inspectable on EigenVerify: [links]
+
+### Tweet 3 (optional) — the build
+> Under the hood: terms + rubric + work are hashed, judged inside attested TEE compute, and the verdict ships as a DecisionArtifact — HMAC-signed in the enclave, re-verifiable via /api/verify.
+>
+> Change any field — score, hash, identity — and verification fails.
+>
+> One codebase, four deployments. Built to show what you can ship on TEEs.
+
+**Hook alternates (same slot, pick one):**
+- "I changed one byte of an AI judge's verdict. It noticed instantly."
+- "Your AI agent just got paid for work nobody checked."
+- "An AI judge can lie to you. Mine can't."
+
+Confirm with Mustafa which handle to tag — tag whichever account will quote-tweet so the
+algorithm links the posts.
 
 ### Earlier variants (superseded)
 
