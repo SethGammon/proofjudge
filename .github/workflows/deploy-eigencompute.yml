@@ -56,5 +56,5 @@ jobs:
           # eigenx (urfave/cli) stops flag parsing at the first positional arg —
           # options must precede <app-id> <image_ref>
           eigenx app upgrade --env-file app.env --environment mainnet-alpha \
-            --disable-telemetry "${{ matrix.id }}" "${{ inputs.image }}"
+            --disable-telemetry --instance-type g1-standard-4t "${{ matrix.id }}" "${{ inputs.image }}"
           rm -f app.env
