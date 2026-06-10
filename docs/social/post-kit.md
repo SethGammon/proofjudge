@@ -50,20 +50,50 @@ graphics — the seal doing its job *is* the show.
    voice track. **Clap once on camera before you start driving** — I use it to sync the two files.
 4. Drop both in `.planning/video-v5/` → `node composite.mjs screen.mp4 face.mp4 [voiceDelaySec]`.
 
-**Shot list + script (talk while driving — conversational, not a read):**
-| Shot | Do | Say |
-|---|---|---|
-| Home page (hold ~4s) | then click **Open the console** | "Agents are deciding who gets paid — and nobody verifies the judge. This is ProofJudge: every acceptance decision becomes a signed, tamper-evident receipt." |
-| Console overview | sweep the four cards, click **Enter chamber** on Code | "Four judges, live on EigenCompute — code, research, negotiation, governance. Same proof machine, four inspectable identities." |
-| OAuth case | click **Judge this work**, let the pipeline light | "Here's a real case — the terms, the rubric, the submitted fix. Judge it: hashed, scored, sealed, and signed inside the TEE." |
-| Receipt prints | pause a beat on ACCEPTED | "Accepted — payment releases." |
-| **Tamper test** | click **Tamper test**, hold the broken receipt | "Now try to break it. One point changed after sealing… verification fails. Hash mismatch. Signature broken. Money doesn't move." |
-| Restore | click **Restore original** | "Put it back — it verifies again." |
-| CSV case | click **CSV export rewrite** → **Judge this work** | "And it's not a yes-machine. Thin tests and TODOs left in? Revise — hold payment." |
-| Session patch | click **Session middleware patch** → **Judge this work** | "Hardcoded keys, skipped test suite? Rejected outright." |
-| Close | hover the receipt / EigenVerify link | "Every receipt is re-verifiable by anyone, against a judge you can inspect. Proof, not promises — links below." |
+**Shot list + script.** Spoken language, written to be said out loud while you drive. Point at
+what you're talking about with the cursor. Don't rush the tamper beat.
 
-The accept → revise → reject arc is the quiet flex: three different verdicts from the same judge
+1. **Home page** (hold a few seconds, then click *Open the console*)
+   "So this is ProofJudge. The whole idea is that AI agents are starting to decide who gets
+   paid, and right now there's no good way to verify the judge. ProofJudge turns every
+   acceptance decision into a signed receipt that anyone can check. Let me show you what
+   that actually looks like."
+
+2. **Console overview** (sweep the four cards, then click *Enter chamber* on Code)
+   "This is the console. There are four judges running live on EigenCompute. One for code
+   review, one for research, one for negotiations, and one for governance. They're all the
+   same proof machine, and each one is deployed under its own identity that you can actually
+   go inspect."
+
+3. **OAuth case** (point at the three panels, then click *Judge this work*)
+   "Here's a real case. You've got the terms of what was promised, the rubric that defines
+   what done means, and the actual code that was submitted. When I hit judge, it hashes the
+   inputs, scores the work against the rubric, collects its evidence, and then seals and
+   signs the whole thing inside the TEE."
+
+4. **The receipt prints** (let it land, point at the verdict)
+   "And there's the receipt. Accepted, with the score, the hashes, and the judge's identity,
+   all signed. The recommendation says release the payment."
+
+5. **Tamper test** (click *Tamper test*, hold on the broken receipt, then *Restore original*)
+   "Now here's my favorite part. Watch what happens if anyone touches this after it's been
+   sealed. The tamper test changes the score by a single point. And verification fails
+   instantly. The hash doesn't match anymore, the signature breaks, and the money doesn't
+   move. When I restore the original, it verifies clean again."
+
+6. **CSV case** (click *CSV export rewrite*, then *Judge this work*)
+   "It's also not just a yes machine. This next submission has thin tests and a couple of
+   TODOs left in it, so the judge comes back with revise. Hold the payment, send it back."
+
+7. **Session patch** (click *Session middleware patch*, then *Judge this work*)
+   "And this one hardcodes a key and skips the test suite entirely. Straight up rejected."
+
+8. **Close** (hover the receipt, glance at the EigenVerify link)
+   "So that's ProofJudge. Every one of these receipts can be re-verified by anyone, against
+   a judge whose identity is public. Proof, not promises. Links are below if you want to go
+   break a receipt yourself."
+
+The accept, revise, reject arc is the quiet flex: three different verdicts from the same judge
 proves it's judging, not rubber-stamping.
 
 ### Tweet 1 — Hook / Problem / Solution (+ video)
