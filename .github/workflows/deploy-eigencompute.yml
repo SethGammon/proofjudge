@@ -1,0 +1,58 @@
+name: Deploy to EigenCompute
+
+# Manually triggered: upgrades the live judges to a fresh image in-place,
+# preserving each app's identity (app ID / EigenVerify link / IP).
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Which judge to upgrade
+        type: choice
+        options: [all, code, research, negotiation, governance]
+        default: all
+      image:
+        description: Image reference
+        default: ghcr.io/sethgammon/proofjudge:latest
+
+env:
+  EIGENX_VERSION: v0.2.16
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        include:
+          - name: code
+            id: "0xd3647631C4706be744BE813cD0226e4f149e5aC0"
+            env_secret: ENV_CODE
+          - name: research
+            id: "0x898E1d5603070C7452Ee7F8CF288639A63a217cc"
+            env_secret: ENV_RESEARCH
+          - name: negotiation
+            id: "0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322"
+            env_secret: ENV_NEGOTIATION
+          - name: governance
+            id: "0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94"
+            env_secret: ENV_GOVERNANCE
+    steps:
+      - name: Install eigenx CLI
+        if: inputs.app == 'all' || inputs.app == matrix.name
+        run: |
+          curl -sL "https://github.com/Layr-Labs/eigenx-cli/releases/download/${EIGENX_VERSION}/eigenx-cli-linux-amd64-${EIGENX_VERSION}.tar.gz" -o eigenx.tgz
+          tar xzf eigenx.tgz
+          BIN=$(find . -maxdepth 2 -name eigenx -type f | head -1)
+          sudo install "$BIN" /usr/local/bin/eigenx
+
+      - name: Upgrade ${{ matrix.name }} judge
+        if: inputs.app == 'all' || inputs.app == matrix.name
+        env:
+          EIGENX_PRIVATE_KEY: ${{ secrets.EIGENX_PRIVATE_KEY }}
+          APP_ENV_FILE: ${{ secrets[matrix.env_secret] }}
+        run: |
+          printf '%s' "$APP_ENV_FILE" > app.env
+          eigenx app upgrade "${{ matrix.id }}" "${{ inputs.image }}" \
+            --env-file app.env --environment mainnet-alpha --disable-telemetry
+          rm -f app.env
