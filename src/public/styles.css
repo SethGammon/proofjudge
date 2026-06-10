@@ -2692,7 +2692,9 @@ body.stage-active .console { visibility: hidden; }
 .stage-paper-wrap .paper-verdict strong { font-size: clamp(40px, 4vw, 52px); }
 .stage-checks { width: min(430px, 90vw); display: flex; flex-direction: column; gap: 6px; }
 
-/* the autoplay cursor: plays the demo the way a hand would */
+/* ── the autoplay actor's hand: a glass ring in the judge's accent ──
+   The outer element carries X, the inner carries Y on a different curve,
+   so travel bends like a wrist instead of a ruler. */
 .stage-cursor {
   position: absolute;
   left: 0;
@@ -2700,29 +2702,78 @@ body.stage-active .console { visibility: hidden; }
   z-index: 40;
   pointer-events: none;
   opacity: 0;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
-  transition: transform 0.72s cubic-bezier(0.34, 0.08, 0.16, 1), opacity 0.3s ease;
+  transition: opacity 0.3s ease;
+  will-change: transform;
 }
 .stage-cursor.visible { opacity: 1; }
-.stage-cursor svg { display: block; transition: transform 0.16s var(--ease); }
-.stage-cursor.pressing svg { transform: scale(0.76); }
+.stage-cursor .cursor-y { display: block; will-change: transform; }
 .stage-cursor .cursor-ring {
   position: absolute;
-  left: -7px;
-  top: -7px;
-  width: 36px;
-  height: 36px;
+  left: -13px;
+  top: -13px;
+  width: 26px;
+  height: 26px;
   border-radius: 99px;
-  border: 2px solid rgba(var(--accent-rgb), 0.9);
+  border: 1.5px solid rgba(var(--accent-rgb), 0.95);
+  background: rgba(var(--accent-rgb), 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), 0 0 12px rgba(var(--accent-rgb), 0.35);
+  transition: transform 0.16s var(--ease);
+}
+.stage-cursor .cursor-dot {
+  position: absolute;
+  left: -2.5px;
+  top: -2.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(var(--accent-rgb), 1);
+  transition: transform 0.16s var(--ease);
+}
+.stage-cursor.pressing .cursor-ring { transform: scale(0.6); }
+.stage-cursor.pressing .cursor-dot { transform: scale(1.8); }
+.stage-cursor .cursor-ripple {
+  position: absolute;
+  left: -19px;
+  top: -19px;
+  width: 38px;
+  height: 38px;
+  border-radius: 99px;
+  border: 2px solid rgba(var(--accent-rgb), 0.85);
   opacity: 0;
   transform: scale(0.4);
 }
-.stage-cursor.pressing .cursor-ring { animation: cursor-ripple 0.5s ease both; }
+.stage-cursor.pressing .cursor-ripple { animation: cursor-ripple 0.5s ease both; }
 
 @keyframes cursor-ripple {
   0% { opacity: 0.9; transform: scale(0.4); }
-  100% { opacity: 0; transform: scale(1.35); }
+  100% { opacity: 0; transform: scale(1.45); }
 }
+
+/* what the hand touches, responds */
+.cursor-pressed { transform: scale(0.97) !important; }
+.act-case .sheet { transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease); }
+.act-case .sheet.cursor-hover {
+  transform: translateY(-8px);
+  box-shadow: 0 26px 50px -18px rgba(0, 0, 0, 0.75), 0 0 30px -8px rgba(var(--accent-rgb), 0.35);
+}
+.paper-rows > div { transition: background 0.25s ease, box-shadow 0.25s ease; }
+.paper-rows > div.cursor-hover {
+  background: rgba(24, 29, 27, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(24, 29, 27, 0.18);
+  border-radius: 4px;
+}
+.verify-row.cursor-hover { box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.5); }
+.paper-foot .seal.cursor-hover { filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.5)); }
+
+/* case → judgment: the sheets feed into the machine */
+.act-case.ingesting .sheet {
+  transition: transform 0.42s cubic-bezier(0.5, 0, 0.8, 0.4), opacity 0.4s ease-in;
+  opacity: 0;
+  transform: translateY(-34px) scale(0.84);
+}
+.act-case.ingesting .sheet:nth-child(1) { transform: translate(150px, -34px) scale(0.84); }
+.act-case.ingesting .sheet:nth-child(2) { transition-delay: 0.05s, 0.05s; }
+.act-case.ingesting .sheet:nth-child(3) { transform: translate(-150px, -34px) scale(0.84); transition-delay: 0.1s, 0.1s; }
 
 /* tamper affordance: the score row becomes the button */
 .stage[data-act="tamper"] .stage-paper-wrap .paper-rows > div[data-row="score"]:not(.broken) {
@@ -2907,7 +2958,9 @@ body.stage-active .console { visibility: hidden; }
 
 @media (max-width: 1280px) {
   .console { height: auto; min-height: 100svh; }
-  .console-frame { height: auto; }
+  /* frame grows with content but never stops short of the viewport —
+     the dock rail rides it all the way to the floor */
+  .console-frame { height: auto; flex: 1; }
   .console-main { height: auto; }
   .console-body {
     grid-template-columns: minmax(0, 1fr) minmax(300px, 0.62fr);

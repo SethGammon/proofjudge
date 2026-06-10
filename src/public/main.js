@@ -188,6 +188,7 @@ const refs = {
   stageSub: $("stage-sub"),
   stageRail: $("stage-rail"),
   stageCursor: $("stage-cursor"),
+  stageSound: $("stage-sound"),
   stageBack: $("stage-back"),
   stageNext: $("stage-next"),
   stageAuto: $("stage-auto"),
@@ -337,6 +338,12 @@ function spawnSwapGhosts() {
     ghost.style.setProperty("--ghost-delay", `${index * 140}ms`);
     refs.chamber.appendChild(ghost);
     shell.scrollTop = shellEl.scrollTop; /* keep the column's scroll position */
+    /* the last wipe to finish ends the swap; the timer is only a fallback */
+    if (index === shells.length - 1) {
+      ghost.addEventListener("animationend", (e) => {
+        if (e.target === ghost) finishSwap();
+      });
+    }
   });
 
   swapRunning = true;
@@ -352,6 +359,9 @@ function spawnDockGhost() {
   ghost.classList.add("dock-ghost");
   host.appendChild(ghost);
   shell.scrollTop = refs.station.scrollTop; /* keep the floor's scroll position */
+  ghost.addEventListener("animationend", (e) => {
+    if (e.target === ghost) finishSwap();
+  });
 
   swapRunning = true;
   window.clearTimeout(swapGhostTimer);
@@ -359,8 +369,10 @@ function spawnDockGhost() {
 }
 
 function finishSwap() {
-  document.querySelectorAll(".swap-ghost").forEach((ghost) => ghost.remove());
+  if (!swapRunning) return; /* animationend and the fallback timer both arrive here */
   swapRunning = false;
+  window.clearTimeout(swapGhostTimer);
+  document.querySelectorAll(".swap-ghost").forEach((ghost) => ghost.remove());
 
   /* rail + accent already flipped at click time (selectJudge) — nothing to
      re-assert here. A judge queued mid-scan triggers its own scan now — unless
@@ -1177,6 +1189,7 @@ function startStage() {
   if (!stationOpen) loadCase(stage.caseFile);
 
   refs.stageAuto.setAttribute("aria-pressed", "false");
+  if (localStorage.getItem("pj-stage-sound") === "1") soundSetEnabled(true);
   window.clearTimeout(stopStage.closeTimer);
   refs.stage.classList.remove("closing");
   refs.stage.hidden = false;
@@ -1273,62 +1286,240 @@ function restartStageCaption() {
   refs.stageCaption.style.animation = "";
 }
 
-/* ── the autoplay cursor: a hand that plays the demo the way you would ── */
+/* ── stage sound: the film's cue palette, synthesized live, opt-in ──
+   Paper, felt, glass, electricity — the same character as the promo score,
+   built from oscillators and filtered noise. No assets, honest synthesis. */
 
-const CURSOR_LEAD_MS = 950; /* travel + press, budgeted inside each act's time */
+const sound = { on: false, ctx: null };
 
-function placeStageCursor(el) {
-  if (!el || prefersReducedMotion()) return;
+function tone(ctx, t0, { freq = 440, to = null, dur = 0.1, gain = 0.1 }) {
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.frequency.setValueAtTime(freq, t0);
+  if (to) osc.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.02);
+}
+
+function snip(ctx, t0, { dur = 0.08, gain = 0.1, filter = null, freq = 1500 }) {
+  const src = ctx.createBufferSource();
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
+  src.buffer = buf;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  let node = src;
+  if (filter) {
+    const f = ctx.createBiquadFilter();
+    f.type = filter;
+    f.frequency.value = freq;
+    node.connect(f);
+    node = f;
+  }
+  node.connect(g).connect(ctx.destination);
+  src.start(t0);
+}
+
+const SOUND_CUES = {
+  tick: (ctx, t) => tone(ctx, t, { freq: 1280, dur: 0.05, gain: 0.09 }),
+  blip: (ctx, t, i = 0) => tone(ctx, t, { freq: [620, 760, 920, 1100, 1320][i % 5], dur: 0.07, gain: 0.08 }),
+  printer: (ctx, t) => {
+    for (let i = 0; i < 24; i += 1) snip(ctx, t + i * 0.026, { dur: 0.012, gain: 0.06, filter: "bandpass", freq: 2300 });
+  },
+  stamp: (ctx, t, soft = false) => {
+    tone(ctx, t, { freq: 82, dur: 0.34, gain: soft ? 0.14 : 0.26 });
+    snip(ctx, t, { dur: 0.05, gain: 0.07, filter: "lowpass", freq: 500 });
+  },
+  verify: (ctx, t) => {
+    tone(ctx, t, { freq: 659, dur: 0.16, gain: 0.09 });
+    tone(ctx, t + 0.16, { freq: 880, dur: 0.16, gain: 0.09 });
+    tone(ctx, t + 0.32, { freq: 1318, dur: 0.3, gain: 0.08 });
+  },
+  check: (ctx, t) => tone(ctx, t, { freq: 980, dur: 0.05, gain: 0.05 }),
+  subhit: (ctx, t) => {
+    tone(ctx, t, { freq: 52, to: 30, dur: 0.85, gain: 0.5 });
+    snip(ctx, t, { dur: 0.06, gain: 0.09, filter: "highpass", freq: 1200 });
+  },
+  fail: (ctx, t) => tone(ctx, t, { freq: 290, dur: 0.07, gain: 0.07 }),
+  resolve: (ctx, t) => {
+    tone(ctx, t, { freq: 220, dur: 1.6, gain: 0.06 });
+    tone(ctx, t, { freq: 329.63, dur: 1.6, gain: 0.05 });
+  }
+};
+
+function cue(name, delayMs = 0, arg) {
+  if (!sound.on || !sound.ctx || !stage.open) return;
+  SOUND_CUES[name]?.(sound.ctx, sound.ctx.currentTime + delayMs / 1000, arg);
+}
+
+function soundSetEnabled(on) {
+  sound.on = on;
+  localStorage.setItem("pj-stage-sound", on ? "1" : "0");
+  refs.stageSound.setAttribute("aria-pressed", String(on));
+  refs.stageSound.textContent = on ? "Sound on" : "Sound off";
+  if (on) {
+    sound.ctx ??= new (window.AudioContext || window.webkitAudioContext)();
+    sound.ctx.resume?.();
+    cue("tick");
+  }
+}
+
+/* ── the autoplay actor: a hand that tours the proof, not a timer ──
+   X and Y ride different easing curves so every path bends like a wrist.
+   Speed scales with distance. It hesitates before pressing. Between beats
+   it hovers the thing being talked about. */
+
+const actor = { x: 0, y: 0, run: 0 };
+
+function actorPoint(el, ax = 0.5, ay = 0.5) {
   const r = el.getBoundingClientRect();
   const sr = refs.stage.getBoundingClientRect();
+  return { x: r.left - sr.left + r.width * ax, y: r.top - sr.top + r.height * ay };
+}
+
+function actorJumpTo(el, ax = 0.5, ay = 0.5) {
+  if (!el || prefersReducedMotion()) return;
+  const { x, y } = actorPoint(el, ax, ay);
   const cur = refs.stageCursor;
-  cur.style.transition = "none";
-  cur.style.transform = `translate(${r.left - sr.left + r.width * 0.5}px, ${r.top - sr.top + r.height * 0.55}px)`;
+  const yEl = cur.firstElementChild;
+  cur.style.transition = "opacity 0.3s ease";
+  yEl.style.transition = "none";
+  cur.style.transform = `translateX(${x}px)`;
+  yEl.style.transform = `translateY(${y}px)`;
+  actor.x = x;
+  actor.y = y;
   cur.hidden = false;
   void cur.offsetWidth;
-  cur.style.transition = "";
   cur.classList.add("visible");
 }
 
-/* glide to an element, press, then act — aborts quietly if auto was switched off */
-function stageCursorPress(el, token, then) {
-  if (!el || prefersReducedMotion()) {
-    then?.();
-    return;
-  }
-  const r = el.getBoundingClientRect();
-  const sr = refs.stage.getBoundingClientRect();
-  const cur = refs.stageCursor;
-  cur.hidden = false;
-  cur.classList.add("visible");
-  cur.style.transform = `translate(${r.left - sr.left + r.width * 0.58}px, ${r.top - sr.top + r.height * 0.6}px)`;
-  window.setTimeout(() => {
-    if (token !== stage.token || !stage.auto) return;
-    cur.classList.add("pressing");
-    window.setTimeout(() => cur.classList.remove("pressing"), 340);
-    window.setTimeout(() => {
-      if (token !== stage.token || !stage.auto) return;
-      then?.();
-    }, 190);
-  }, 740);
+function actorGlide(el, opts = {}) {
+  return new Promise((resolve) => {
+    if (!el || prefersReducedMotion()) {
+      resolve();
+      return;
+    }
+    const { x, y } = actorPoint(el, opts.ax ?? 0.5, opts.ay ?? 0.5);
+    const dist = Math.hypot(x - actor.x, y - actor.y);
+    const ms = opts.ms ?? Math.round(Math.min(900, Math.max(380, dist * 1.05)));
+    const cur = refs.stageCursor;
+    const yEl = cur.firstElementChild;
+    cur.hidden = false;
+    cur.classList.add("visible");
+    cur.style.transition = `opacity 0.3s ease, transform ${ms}ms cubic-bezier(0.33, 0.02, 0.22, 1)`;
+    yEl.style.transition = `transform ${ms}ms cubic-bezier(0.55, 0.06, 0.2, 1.14)`;
+    cur.style.transform = `translateX(${x}px)`;
+    yEl.style.transform = `translateY(${y}px)`;
+    actor.x = x;
+    actor.y = y;
+    window.setTimeout(resolve, ms + 30);
+  });
+}
+
+async function actorPress(el) {
+  if (prefersReducedMotion()) return;
+  await wait(150 + Math.random() * 130); /* a hand hesitates before it commits */
+  refs.stageCursor.classList.add("pressing");
+  el?.classList.add("cursor-pressed");
+  cue("tick");
+  await wait(170);
+  refs.stageCursor.classList.remove("pressing");
+  window.setTimeout(() => el?.classList.remove("cursor-pressed"), 240);
+  await wait(70);
+}
+
+async function actorHover(el, ms = 650, opts = {}) {
+  if (!el) return;
+  await actorGlide(el, opts);
+  el.classList.add("cursor-hover");
+  await wait(ms);
+  el.classList.remove("cursor-hover");
 }
 
 function hideStageCursor() {
   refs.stageCursor.classList.remove("visible", "pressing");
 }
 
-function scheduleStageAuto(ms) {
-  if (!stage.auto || !stage.open || !ms) return;
+/* per-act choreography, anchored to real events: renderers call this only
+   once their content is actually on stage (after the seal lands, after the
+   checks render) — the scripts add breath and gesture, not blind clocks */
+function runAutoScript(actId, railMs) {
+  if (!stage.auto || !stage.open) return;
   const token = stage.token;
-  refs.stage.style.setProperty("--act-ms", `${ms}ms`);
+  const run = ++actor.run;
+  const alive = () => stage.auto && stage.open && token === stage.token && run === actor.run;
+  refs.stage.style.setProperty("--act-ms", `${railMs}ms`);
   renderStageRail(true);
-  window.clearTimeout(stage.timer);
-  const total = prefersReducedMotion() ? Math.min(ms, 1500) : ms;
-  const lead = prefersReducedMotion() ? 0 : CURSOR_LEAD_MS;
-  stage.timer = window.setTimeout(() => {
-    if (token !== stage.token || !stage.auto) return;
-    stageCursorPress(refs.stageNext, token, () => stageNext());
-  }, Math.max(500, total - lead));
+
+  const beat = async (ms) => {
+    await wait(prefersReducedMotion() ? Math.min(ms, 400) : ms);
+    return alive();
+  };
+  const goNext = async () => {
+    await actorGlide(refs.stageNext, { ay: 0.55 });
+    if (!alive()) return;
+    await actorPress(refs.stageNext);
+    if (!alive()) return;
+    stageNext();
+  };
+  const q = (sel) => refs.stageCanvas.querySelector(sel);
+  const qa = (sel) => [...refs.stageCanvas.querySelectorAll(sel)];
+
+  const SCRIPTS = {
+    question: async () => {
+      if (await beat(3000)) await goNext();
+    },
+    case: async () => {
+      if (!(await beat(700))) return;
+      for (const sheet of qa(".act-case .sheet")) { /* a clerk's pass over the papers */
+        await actorHover(sheet, 560, { ay: 0.3 });
+        if (!alive()) return;
+      }
+      if (await beat(250)) await goNext();
+    },
+    judgment: async () => {
+      if (await beat(1500)) await goNext();
+    },
+    receipt: async () => {
+      if (!(await beat(1400))) return; /* let it print, count, and stamp */
+      await actorHover(q('[data-row="score"]'), 520, { ax: 0.72 });
+      if (!alive()) return;
+      await actorHover(qa(".paper-rows > div").at(-2), 560, { ax: 0.72 }); /* the signature */
+      if (!alive()) return;
+      await actorHover(q(".paper-foot .seal"), 480);
+      if (alive()) await goNext();
+    },
+    verify: async () => {
+      if (!(await beat(900))) return;
+      await actorHover(q(".verify-row"), 700, { ax: 0.2 });
+      if (!alive()) return;
+      if (await beat(1300)) await goNext();
+    },
+    tamper: async () => {
+      if (!(await beat(900))) return;
+      const row = q('[data-row="score"]');
+      if (!row) return;
+      await actorGlide(row, { ms: 1200, ax: 0.72, ay: 0.55 }); /* slow, deliberate approach */
+      if (!alive()) return;
+      row.classList.add("cursor-hover");
+      await wait(760); /* let the invite pulse breathe under the hand */
+      row.classList.remove("cursor-hover");
+      if (!alive()) return;
+      await actorPress(row);
+      if (!alive()) return;
+      runStageTamper(token);
+      /* then stillness — the slam owns the room; the "failed" script resumes after */
+    },
+    failed: async () => {
+      if (await beat(5400)) await goNext();
+    }
+  };
+  SCRIPTS[actId]?.().catch(() => {});
 }
 
 /* ── act renderers ── */
@@ -1342,7 +1533,7 @@ function renderActQuestion(token) {
       <h1>Agents are deciding<br />who gets paid.</h1>
       <p class="aq-q">Who verifies the judge?</p>
     </div>`;
-  scheduleStageAuto(STAGE_ACTS[0].autoMs);
+  runAutoScript("question", 4400);
 }
 
 function renderActCase(token) {
@@ -1363,10 +1554,21 @@ function renderActCase(token) {
         <p>${esc(c.work)}</p>
       </div>
     </div>`;
-  scheduleStageAuto(STAGE_ACTS[1].autoMs);
+  cue("tick", 80);
+  cue("tick", 260);
+  cue("tick", 440);
+  runAutoScript("case", 6400);
 }
 
 async function renderActJudgment(token) {
+  /* the case sheets feed into the machine — the cut becomes a hand-off */
+  const caseAct = refs.stageCanvas.querySelector(".act-case");
+  if (caseAct && !prefersReducedMotion()) {
+    caseAct.classList.add("ingesting");
+    await wait(430);
+    if (token !== stage.token) return;
+  }
+
   const app = APP_REGISTRY[currentJudge];
   const steps = [
     ["Hash the inputs", "SHA-256"],
@@ -1390,7 +1592,7 @@ async function renderActJudgment(token) {
   if (stage.artifact) {
     /* re-entry via Back: show the pipeline complete, no re-judging */
     refs.stageCanvas.querySelectorAll(".aj-step").forEach((s) => s.classList.add("done"));
-    scheduleStageAuto(2400);
+    runAutoScript("judgment", 2600);
     return;
   }
 
@@ -1398,16 +1600,22 @@ async function renderActJudgment(token) {
   refs.stageNext.disabled = true;
   refs.stageNext.textContent = "Sealing…";
 
-  const stepEls = refs.stageCanvas.querySelectorAll(".aj-step");
+  const stepEls = [...refs.stageCanvas.querySelectorAll(".aj-step")];
+  const lastStep = stepEls[stepEls.length - 1];
   const animate = (async () => {
     const ms = prefersReducedMotion() ? 20 : 520;
-    for (const el of stepEls) {
+    for (const el of stepEls.slice(0, -1)) {
       if (token !== stage.token) return;
       el.classList.add("active");
+      cue("blip", 0, stepEls.indexOf(el));
       await wait(ms);
       el.classList.remove("active");
       el.classList.add("done");
     }
+    if (token !== stage.token) return;
+    /* the signature step holds until the judge actually signs — real latency, on stage */
+    lastStep.classList.add("active");
+    cue("blip", 0, 4);
   })();
 
   try {
@@ -1427,6 +1635,8 @@ async function renderActJudgment(token) {
       animate
     ]);
     if (token !== stage.token) return;
+    lastStep.classList.remove("active");
+    lastStep.classList.add("done");
     stage.artifact = data.artifact;
     judgedCases[c.id] = data.artifact.decision;
     saveArchive(data.artifact);
@@ -1435,7 +1645,7 @@ async function renderActJudgment(token) {
     stage.busy = false;
     refs.stageNext.disabled = false;
     refs.stageNext.textContent = STAGE_ACTS[2].nextLabel;
-    scheduleStageAuto(STAGE_ACTS[2].autoMs);
+    runAutoScript("judgment", 2600);
   } catch (error) {
     if (token !== stage.token) return;
     stage.busy = false;
@@ -1541,16 +1751,18 @@ function renderActReceipt(token) {
   scene.dataset.phase = "receipt";
   if (slot.dataset.state === "sealing") {
     stage.printed = true;
+    cue("printer", 60);
     const scoreEl = scene.querySelector("#stage-score");
     window.setTimeout(() => {
       if (token !== stage.token) return;
       countUp(scoreEl, stage.artifact.score, ` / 100 · ${stage.artifact.confidence}% confidence`);
       slot.dataset.state = "sealed";
+      cue("stamp");
     }, 900);
   } else {
     slot.dataset.state = "sealed"; /* verified glow eases back off on revisit */
   }
-  scheduleStageAuto(STAGE_ACTS[3].autoMs);
+  runAutoScript("receipt", 5800);
 }
 
 async function renderActVerify(token) {
@@ -1569,7 +1781,10 @@ async function renderActVerify(token) {
     renderVerifyReadout(checks, verification, stage.artifact);
     slot.dataset.state = verification.ok ? "verified" : "tampered";
     setStageBanner(slot, verification.ok ? "VERIFIED" : "VERIFICATION FAILED", verification.ok);
-    scheduleStageAuto(STAGE_ACTS[4].autoMs);
+    cue("verify");
+    for (let i = 0; i < 7; i += 1) cue("check", 180 + i * 70);
+    cue("stamp", 420, true);
+    runAutoScript("verify", 5400);
   } catch (error) {
     if (token !== stage.token) return;
     showToast(`Verification could not run: ${error.message}`, "error");
@@ -1585,16 +1800,7 @@ function renderActTamper(token) {
   setStageBanner(slot, null);     /* VERIFIED lifts away */
   const scoreRow = scene.querySelector('[data-row="score"]');
   if (scoreRow) scoreRow.onclick = () => runStageTamper(stage.token);
-  if (stage.auto) {
-    window.clearTimeout(stage.timer);
-    const ms = STAGE_ACTS[5].autoMs;
-    refs.stage.style.setProperty("--act-ms", `${ms}ms`);
-    renderStageRail(true);
-    stage.timer = window.setTimeout(() => {
-      if (token !== stage.token || !stage.auto) return;
-      stageCursorPress(scoreRow, token, () => runStageTamper(token));
-    }, prefersReducedMotion() ? 600 : Math.max(500, ms - CURSOR_LEAD_MS));
-  }
+  runAutoScript("tamper", 3800);
 }
 
 async function runStageTamper(token) {
@@ -1619,6 +1825,8 @@ async function runStageTamper(token) {
     const slot = scene.querySelector(".desk-slot");
     slot.dataset.state = "tampered";
     setStageBanner(slot, "VERIFICATION FAILED", false);
+    cue("subhit");
+    for (let i = 0; i < 3; i += 1) cue("fail", 480 + i * 160);
     scene.dataset.phase = "failed"; /* the side returns, carrying the post-mortem */
     renderVerifyReadout(scene.querySelector("#stage-checks"), verification, tampered, {
       compare: {
@@ -1634,7 +1842,7 @@ async function runStageTamper(token) {
     refs.stageSub.textContent = "One point changed after sealing — the recomputed hash no longer matches and the signature breaks. Money doesn’t move.";
     refs.stageNext.textContent = "Why it matters →";
     restartStageCaption();
-    scheduleStageAuto(5600);
+    runAutoScript("failed", 6400);
   } catch (error) {
     if (token !== stage.token) return;
     resetStagePaper(scene); /* restores the score and clears stage.tampered — the click can be tried again */
@@ -1646,6 +1854,7 @@ function renderActClose(token) {
   stage.auto = false;
   refs.stageAuto.setAttribute("aria-pressed", "false");
   hideStageCursor();
+  cue("resolve", 250);
   renderStageRail();
   refs.stageCanvas.innerHTML = `
     <div class="act act-close">
@@ -1695,8 +1904,8 @@ function stageToggleAuto() {
   stage.auto = !stage.auto;
   refs.stageAuto.setAttribute("aria-pressed", String(stage.auto));
   if (stage.auto) {
-    placeStageCursor(refs.stageAuto); /* the hand starts where yours just was */
-    goToAct(stage.act); /* re-enter the act so its auto timer arms */
+    actorJumpTo(refs.stageAuto); /* the hand starts where yours just was */
+    goToAct(stage.act); /* re-enter the act so its script arms */
   } else {
     window.clearTimeout(stage.timer);
     renderStageRail(false);
@@ -1757,6 +1966,7 @@ refs.proofBtn.addEventListener("click", () => startStage());
 refs.stageNext.addEventListener("click", () => stageNext());
 refs.stageBack.addEventListener("click", () => goToAct(stage.act - 1));
 refs.stageAuto.addEventListener("click", () => stageToggleAuto());
+refs.stageSound.addEventListener("click", () => soundSetEnabled(!sound.on));
 refs.stageExit.addEventListener("click", () => stopStage());
 refs.stageRail.addEventListener("click", (event) => {
   const dot = event.target.closest("[data-act-jump]");
@@ -1803,6 +2013,10 @@ tickerEl.addEventListener("pointerenter", () => {
 tickerEl.addEventListener("pointerleave", () => {
   if (!document.body.classList.contains("entry-open")) return;
   startTicker();
+});
+window.addEventListener("resize", () => {
+  /* ghost geometry is frozen at spawn — on resize, snap the swap to done */
+  if (swapRunning) finishSwap();
 });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {

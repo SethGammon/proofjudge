@@ -32,9 +32,31 @@ Screenshot it at full res for the tweet's static fallback.
 
 ---
 
-## 2. Tweet copy (three variants)
+## 2. Tweet copy
 
-**A — the hook (recommended lead):**
+**FINAL (pairs with promo v4 — send this one to Mustafa):**
+> AI agents are starting to decide who gets paid.
+>
+> So who verifies the judge?
+>
+> ProofJudge runs the verdict inside an EigenCompute TEE and seals it as a signed receipt anyone can re-verify before money moves.
+>
+> At 0:39 I edit one byte of a sealed verdict. Watch what the seal does. 🧾
+>
+> Proof, not promises.
+
+No links in the body (links suppress reach) — put the four live judges + EigenVerify links in a
+**pinned first reply**: "the receipts in the video are real — verify them yourself." Confirm with
+Mustafa which handle to tag (@eigenlayer vs the EigenCloud account) — tag whichever account will
+quote-tweet so the algorithm links the posts.
+
+**Short alt:**
+> Agents are deciding who gets paid. Nobody's verifying the judge. So I built one that can't lie
+> about its verdicts — sealed in an EigenCompute TEE, broken by a single edited byte. 0:39. 🧾
+
+### Earlier variants (superseded)
+
+**A — the hook:**
 > Agents are starting to decide who gets paid.
 >
 > So who verifies the judge?
