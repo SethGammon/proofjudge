@@ -53,6 +53,8 @@ jobs:
           APP_ENV_FILE: ${{ secrets[matrix.env_secret] }}
         run: |
           printf '%s' "$APP_ENV_FILE" > app.env
-          eigenx app upgrade "${{ matrix.id }}" "${{ inputs.image }}" \
-            --env-file app.env --environment mainnet-alpha --disable-telemetry
+          # eigenx (urfave/cli) stops flag parsing at the first positional arg —
+          # options must precede <app-id> <image_ref>
+          eigenx app upgrade --env-file app.env --environment mainnet-alpha \
+            --disable-telemetry "${{ matrix.id }}" "${{ inputs.image }}"
           rm -f app.env
