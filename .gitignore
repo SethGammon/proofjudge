@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.planning/
 .env
 .env.*
 !.env.example
@@ -15,3 +16,7 @@ docs/private-preview/
 docs/handoff.md
 docs/proofjudge-finish-line-master-plan.md
 docs/proofjudge-cinematic-entry-addendum.md
+
+# superseded promo cuts stay local
+docs/social/video/*.mp4
+!docs/social/video/proofjudge-promo-v4.mp4

@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Tamper fracture">
-  <rect width="160" height="160" rx="18" fill="#160b0b"/>
-  <path d="M48 24h64v112l-10-8-10 8-12-8-10 8-10-8-12 8V24z" fill="#1b1010" stroke="#ff6b6b" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M83 31L68 63l20 15-22 50" fill="none" stroke="#ff6b6b" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M61 58h20M60 92h24M95 58h8M92 92h13" stroke="#edf2ea" stroke-opacity=".52" stroke-width="5" stroke-linecap="round"/>
-  <path d="M55 117l50-50M105 117L55 67" stroke="#ff6b6b" stroke-width="6" stroke-linecap="round"/>
-</svg>
