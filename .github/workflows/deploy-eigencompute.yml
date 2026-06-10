@@ -54,7 +54,7 @@ jobs:
         run: |
           printf '%s' "$APP_ENV_FILE" > app.env
           # eigenx (urfave/cli) stops flag parsing at the first positional arg —
-          # options must precede <app-id> <image_ref>
-          eigenx app upgrade --env-file app.env --environment mainnet-alpha \
-            --disable-telemetry --instance-type g1-standard-4t --log-visibility private --resource-usage-monitoring enable "${{ matrix.id }}" "${{ inputs.image }}"
+          # options must precede <app-id> <image_ref>. The image-layering
+          # confirmation needs a TTY, so run under `script` with y piped in.
+          printf 'y\n' | script -qec 'eigenx app upgrade --env-file app.env --environment mainnet-alpha --disable-telemetry --instance-type g1-standard-4t --log-visibility private --resource-usage-monitoring enable "${{ matrix.id }}" "${{ inputs.image }}"' /dev/null
           rm -f app.env
