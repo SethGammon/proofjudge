@@ -1188,13 +1188,27 @@ function startStage() {
   closeDrawer();
   if (!stationOpen) loadCase(stage.caseFile);
 
-  refs.stageAuto.setAttribute("aria-pressed", "false");
+  /* the proof plays itself — touching anything hands the controls over */
+  stage.auto = true;
+  refs.stageAuto.setAttribute("aria-pressed", "true");
   if (localStorage.getItem("pj-stage-sound") === "1") soundSetEnabled(true);
   window.clearTimeout(stopStage.closeTimer);
   refs.stage.classList.remove("closing");
   refs.stage.hidden = false;
   document.body.classList.add("stage-active");
+  actorJumpTo(refs.stageNext); /* the hand starts at rest on the controls */
   goToAct(0);
+}
+
+/* any interaction while the proof is playing pauses it — the viewer takes the
+   wheel; the Auto-play button hands it back */
+function pauseStageAuto() {
+  if (!stage.auto) return;
+  stage.auto = false;
+  refs.stageAuto.setAttribute("aria-pressed", "false");
+  window.clearTimeout(stage.timer);
+  renderStageRail(false);
+  hideStageCursor();
 }
 
 function stopStage(options = {}) {
@@ -1880,6 +1894,8 @@ function renderActClose(token) {
     stage.tampered = null;
     stage.printed = false;
     stage.maxAct = 0;
+    stage.auto = true; /* replay = watch again */
+    refs.stageAuto.setAttribute("aria-pressed", "true");
     goToAct(0);
   });
 }
@@ -1973,6 +1989,12 @@ refs.stageRail.addEventListener("click", (event) => {
   if (!dot || dot.disabled || stage.busy || !stage.open) return;
   goToAct(Number(dot.dataset.actJump));
 });
+/* touching anything on the stage (except Auto/Sound) pauses the performance */
+refs.stage.addEventListener("pointerdown", (event) => {
+  if (!stage.auto) return;
+  if (event.target.closest("#stage-auto, #stage-sound")) return;
+  pauseStageAuto();
+}, true);
 
 document.querySelectorAll("[data-entry-judge]").forEach((button) => {
   button.addEventListener("click", () => enterChamber(button.dataset.entryJudge, { push: true }));
@@ -2122,9 +2144,11 @@ document.addEventListener("keydown", (event) => {
     } else if (event.key === "ArrowRight" || event.key === " ") {
       if (event.target.closest("button, a, input, textarea")) return;
       event.preventDefault();
+      pauseStageAuto();
       stageNext();
     } else if (event.key === "ArrowLeft") {
       event.preventDefault();
+      pauseStageAuto();
       if (stage.act > 0) goToAct(stage.act - 1);
     }
     return;

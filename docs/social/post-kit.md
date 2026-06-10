@@ -37,34 +37,34 @@ Screenshot it at full res for the tweet's static fallback.
 Per Mustafa's feedback (face + voice performs best; copy = Hook / Problem / Solution, links in
 tweet 2, build detail in tweet 3).
 
-**Video pipeline (all automated except the facecam and the redeploy):**
-1. Redeploy the current frontend to the Code judge (the live deployments predate the new stage).
-2. `node .planning/video-v5/record.mjs http://34.12.29.220:3000` — unattended Playwright capture
-   of the choreographed Auto-play at 1920×1080 + an act-timestamp log.
-3. `node .planning/video-v5/build-screen.mjs` — trims the lead-in and lays the film's cue palette
-   (printer, stamp, verify motif, sub-drop) onto the logged timestamps → `screen.mp4`.
-4. **Facecam (the only human step):** Windows Camera app is fine. Settings → 1080p/30. Camera at
-   eye level, light in front of you, quiet room, arm's-length framing. Play `screen.mp4` on your
-   monitor (with audio) and talk along to it — the pacing syncs itself. 2–3 takes, 45s each.
-   File lands in `Pictures\Camera Roll`; drop it in `.planning/video-v5/` as `face.mp4`.
-5. `node composite.mjs screen.mp4 face.mp4 [voiceDelaySec] [--circle]` → `proofjudge-promo-v5.mp4`
-   (facecam in a rounded container bottom-left, demo audio ducked −9 dB under the voice, −16 LUFS).
+**Format: the real product, driven by hand.** A walkthrough from the home page → console → Code
+judge with three contrasting verdicts, facecam container bottom-left. ~75 seconds. No motion
+graphics — the seal doing its job *is* the show.
 
-**The script, per viewport** (times from the reference capture; the judgment act runs a few
-seconds longer against the live LLM — talk to the playback and it self-corrects):
-| Ref time | On screen | Say |
+**Recording (one sitting):**
+1. Redeploy the current frontend first — the live deployments predate the new console, and
+   recording locally shows `demo-placeholder` attestation on the receipts.
+2. **OBS**: 1920×1080 display capture of the browser, **mic muted** (desktop-audio track left
+   enabled so the file has an audio stream). You drive.
+3. **Windows Camera** (1080p, eye level, light in front): records simultaneously — this is the
+   voice track. **Clap once on camera before you start driving** — I use it to sync the two files.
+4. Drop both in `.planning/video-v5/` → `node composite.mjs screen.mp4 face.mp4 [voiceDelaySec]`.
+
+**Shot list + script (talk while driving — conversational, not a read):**
+| Shot | Do | Say |
 |---|---|---|
-| 0:00–0:05 | "Agents are deciding who gets paid." | "AI agents are starting to decide who gets paid. Nobody verifies the judge." |
-| 0:05–0:10 | Three case sheets land | "So here's a real case. The terms. The rubric that defines *done*. And the work that arrived." |
-| 0:10–0:15 | JUDGED INSIDE A TEE · pipeline lights | "The judgment happens inside a TEE on EigenCompute — attested compute, under an identity anyone can inspect." |
-| 0:15–0:21 | Receipt prints, score counts, seal stamps | "The verdict prints as a signed receipt. Score, hashes, judge identity — sealed." |
-| 0:21–0:26 | VERIFIED + six checks cascade | "Anyone can re-verify it against the live judge. Every check passes." |
-| 0:26–0:30 | The hand glides to the score row | "Now watch what happens when the score changes by one point after sealing—" |
-| 0:30–0:36 | **THE SLAM** + post-mortem panel | *(beat — let the slam hit)* "—verification fails. The hash breaks. The signature breaks. Money doesn't move." |
-| 0:36–0:41 | PROOF, NOT PROMISES. | "Proof, not promises. It's live on EigenCompute — links below if you want to break a receipt yourself." |
+| Home page (hold ~4s) | then click **Open the console** | "Agents are deciding who gets paid — and nobody verifies the judge. This is ProofJudge: every acceptance decision becomes a signed, tamper-evident receipt." |
+| Console overview | sweep the four cards, click **Enter chamber** on Code | "Four judges, live on EigenCompute — code, research, negotiation, governance. Same proof machine, four inspectable identities." |
+| OAuth case | click **Judge this work**, let the pipeline light | "Here's a real case — the terms, the rubric, the submitted fix. Judge it: hashed, scored, sealed, and signed inside the TEE." |
+| Receipt prints | pause a beat on ACCEPTED | "Accepted — payment releases." |
+| **Tamper test** | click **Tamper test**, hold the broken receipt | "Now try to break it. One point changed after sealing… verification fails. Hash mismatch. Signature broken. Money doesn't move." |
+| Restore | click **Restore original** | "Put it back — it verifies again." |
+| CSV case | click **CSV export rewrite** → **Judge this work** | "And it's not a yes-machine. Thin tests and TODOs left in? Revise — hold payment." |
+| Session patch | click **Session middleware patch** → **Judge this work** | "Hardcoded keys, skipped test suite? Rejected outright." |
+| Close | hover the receipt / EigenVerify link | "Every receipt is re-verifiable by anyone, against a judge you can inspect. Proof, not promises — links below." |
 
-If any line feels rushed, the per-act `beat()` values in the autoplay scripts are one-number
-stretches and the capture re-records in minutes.
+The accept → revise → reject arc is the quiet flex: three different verdicts from the same judge
+proves it's judging, not rubber-stamping.
 
 ### Tweet 1 — Hook / Problem / Solution (+ video)
 > AI agents are deciding who gets paid. Nobody verifies the judge.
