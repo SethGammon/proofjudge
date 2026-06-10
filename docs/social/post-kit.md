@@ -37,42 +37,49 @@ Screenshot it at full res for the tweet's static fallback.
 Per Mustafa's feedback (face + voice performs best; copy = Hook / Problem / Solution, links in
 tweet 2, build detail in tweet 3).
 
-**Video:** screen-record the console's choreographed Auto-play (live deployment, stage Sound ON),
-then film a facecam talk track and composite it as a rounded container bottom-left.
-Pipeline: `.planning/video-v5/composite.mjs <screen.mp4> <face.mp4> [voiceDelaySec] [--circle]`
-→ `proofjudge-promo-v5.mp4` (1080p60, voice-ducked demo audio, −16 LUFS). Tested and working.
+**Video pipeline (all automated except the facecam and the redeploy):**
+1. Redeploy the current frontend to the Code judge (the live deployments predate the new stage).
+2. `node .planning/video-v5/record.mjs http://34.12.29.220:3000` — unattended Playwright capture
+   of the choreographed Auto-play at 1920×1080 + an act-timestamp log.
+3. `node .planning/video-v5/build-screen.mjs` — trims the lead-in and lays the film's cue palette
+   (printer, stamp, verify motif, sub-drop) onto the logged timestamps → `screen.mp4`.
+4. **Facecam (the only human step):** Windows Camera app is fine. Settings → 1080p/30. Camera at
+   eye level, light in front of you, quiet room, arm's-length framing. Play `screen.mp4` on your
+   monitor (with audio) and talk along to it — the pacing syncs itself. 2–3 takes, 45s each.
+   File lands in `Pictures\Camera Roll`; drop it in `.planning/video-v5/` as `face.mp4`.
+5. `node composite.mjs screen.mp4 face.mp4 [voiceDelaySec] [--circle]` → `proofjudge-promo-v5.mp4`
+   (facecam in a rounded container bottom-left, demo audio ducked −9 dB under the voice, −16 LUFS).
 
-**Talk track (timed to the autoplay acts, ~45s — conversational, not a VO read):**
-| Act | Say |
-|---|---|
-| The question | "AI agents are starting to decide who gets paid. Nobody's verifying the judge. So I built one you can check." |
-| The case file | "This is a real case — the terms, the rubric for *done*, and the work that actually arrived." |
-| The judgment | "The judgment runs inside a trusted execution environment on EigenCompute — attested compute, under an identity anyone can inspect." |
-| The receipt | "The verdict prints as a signed receipt. Score, hashes, judge identity — sealed." |
-| The proof | "Anyone can re-verify it against the live judge. Every check passes." |
-| The tamper | "Now watch — I change the score by one point…" *(pause for the slam)* "…and verification fails. The hash breaks, the signature breaks. Money doesn't move." |
-| The point | "Proof, not promises. It's live — links below if you want to try to cheat it yourself." |
+**The script, per viewport** (times from the reference capture; the judgment act runs a few
+seconds longer against the live LLM — talk to the playback and it self-corrects):
+| Ref time | On screen | Say |
+|---|---|---|
+| 0:00–0:05 | "Agents are deciding who gets paid." | "AI agents are starting to decide who gets paid. Nobody verifies the judge." |
+| 0:05–0:10 | Three case sheets land | "So here's a real case. The terms. The rubric that defines *done*. And the work that arrived." |
+| 0:10–0:15 | JUDGED INSIDE A TEE · pipeline lights | "The judgment happens inside a TEE on EigenCompute — attested compute, under an identity anyone can inspect." |
+| 0:15–0:21 | Receipt prints, score counts, seal stamps | "The verdict prints as a signed receipt. Score, hashes, judge identity — sealed." |
+| 0:21–0:26 | VERIFIED + six checks cascade | "Anyone can re-verify it against the live judge. Every check passes." |
+| 0:26–0:30 | The hand glides to the score row | "Now watch what happens when the score changes by one point after sealing—" |
+| 0:30–0:36 | **THE SLAM** + post-mortem panel | *(beat — let the slam hit)* "—verification fails. The hash breaks. The signature breaks. Money doesn't move." |
+| 0:36–0:41 | PROOF, NOT PROMISES. | "Proof, not promises. It's live on EigenCompute — links below if you want to break a receipt yourself." |
 
-**Recording checklist:** ① record the screen first (live deployment — local shows DEMO mode and
-100/100 scores; OBS, 1920×1080, capture tab audio, Sound on → Auto-play, hands off). ② Play that
-capture back on a second screen while filming the facecam — talking to the playback gets natural
-timing for free. ③ `node composite.mjs screen.mp4 face.mp4` (third arg nudges voice sync ±s).
-If the autoplay feels tight to talk over, the per-act `beat()` values in `main.js` are one-number
-stretches.
+If any line feels rushed, the per-act `beat()` values in the autoplay scripts are one-number
+stretches and the capture re-records in minutes.
 
 ### Tweet 1 — Hook / Problem / Solution (+ video)
-> I built an AI judge. Then I tried to cheat it.
+> AI agents are deciding who gets paid. Nobody verifies the judge.
 >
-> AI agents are starting to do paid work — and acceptance is the fragile part. Who judged it? Was the verdict changed? Can anyone check before money moves?
+> Acceptance is the fragile part of agent work — who judged it, was the verdict changed, can anyone check it before money moves?
 >
-> ProofJudge decides inside an EigenCompute TEE and seals every verdict as a signed, tamper-evident receipt.
+> ProofJudge settles this with hardware, not promises: every verdict is decided inside an EigenCompute TEE and sealed as a signed receipt.
 >
-> At 0:XX I edit one byte. Watch what happens.
+> At 0:XX one edited byte kills the payment.
 
-*(fill 0:XX with the tamper timestamp from the final cut; no links in tweet 1 — links suppress reach)*
+*(fill 0:XX with the slam timestamp from the final cut; no links in tweet 1 — links suppress reach.
+The hook is the exact line the video opens with — copy and video say the same thing on purpose.)*
 
 ### Tweet 2 — the links
-> Try to cheat it yourself — all four judges are live on EigenCompute, and the receipts in the video are real:
+> Break one yourself — all four judges are live on EigenCompute, and the receipts in the video are real:
 >
 > Code · Research · Negotiation · Governance: [live links]
 >
@@ -86,9 +93,9 @@ stretches.
 > One codebase, four deployments. Built to show what you can ship on TEEs.
 
 **Hook alternates (same slot, pick one):**
-- "I changed one byte of an AI judge's verdict. It noticed instantly."
-- "Your AI agent just got paid for work nobody checked."
-- "An AI judge can lie to you. Mine can't."
+- "Money is starting to move on AI verdicts nobody can check."
+- "An AI verdict is just a row in a database — until you seal it."
+- "One edited byte just stopped a payment."
 
 Confirm with Mustafa which handle to tag — tag whichever account will quote-tweet so the
 algorithm links the posts.
