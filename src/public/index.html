@@ -3,485 +3,409 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ProofJudge - Verifiable Acceptance For Autonomous Work</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a0b0a'/%3E%3Cpath d='M18 16h28v32H18z' fill='none' stroke='%2337d67a' stroke-width='4'/%3E%3Cpath d='M24 28h16M24 36h10' stroke='%2337d67a' stroke-width='4'/%3E%3C/svg%3E" />
+    <title>ProofJudge — Who verifies the judge?</title>
+    <meta name="description" content="ProofJudge turns work acceptance into a signed, tamper-evident settlement receipt — judged inside EigenCompute, re-verifiable by anyone before money moves." />
+    <meta property="og:title" content="ProofJudge — Who verifies the judge?" />
+    <meta property="og:description" content="A verifiable acceptance layer for autonomous work. Every verdict becomes a signed receipt; edit one field and verification fails." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ProofJudge — Who verifies the judge?" />
+    <meta name="twitter:description" content="Agents are deciding who gets paid. ProofJudge makes the judgment accountable." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1118'/%3E%3Cpath d='M20 14h24v30l-4 4-4-4-4 4-4-4-4 4-4-4z' fill='%23f0ecdf'/%3E%3Cpath d='M25 24h14M25 31h9' stroke='%230b1118' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='40' cy='38' r='5' fill='%233ddc8a'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Newsreader:ital,opsz,wght@1,6..72,400..600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <section class="entry-layer" id="entry-layer" aria-label="ProofJudge entry">
-      <div class="entry-receipt-stack" aria-hidden="true">
-        <div class="entry-receipt-card receipt-card-pass">
-          <span class="receipt-kicker">Signed Decision Receipt</span>
-          <strong>ACCEPT</strong>
-          <div><span>Case</span><b>Code bounty #042</b></div>
-          <div><span>Action</span><b>Release settlement</b></div>
-          <div><span>Artifact</span><b>0x8f3a...c91e</b></div>
-          <small>DecisionArtifact sealed</small>
+    <div class="atmosphere" aria-hidden="true">
+      <span class="atmo-key"></span>
+      <span class="atmo-grid-far"></span>
+      <span class="atmo-grid"></span>
+      <span class="atmo-seal">
+        <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="0.8"/><circle cx="32" cy="32" r="23" fill="none" stroke="currentColor" stroke-width="0.4" stroke-dasharray="2.6 3"/><path d="M21 32.5l7.5 7.5L43 25.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="atmo-floor"></span>
+    </div>
+
+    <!-- ──────────────────────────── THRESHOLD ──────────────────────────── -->
+    <section class="threshold" id="entry" aria-label="ProofJudge introduction">
+      <div class="threshold-stage">
+        <div class="threshold-copy">
+          <p class="threshold-eyebrow"><span class="pulse-dot" aria-hidden="true"></span>EigenCompute · Verifiable acceptance layer</p>
+          <h1 class="threshold-title">Agents are deciding<br />who gets paid.</h1>
+          <p class="threshold-question">Who verifies the judge?</p>
+          <p class="threshold-line">
+            ProofJudge turns acceptance into a <b>signed, tamper-evident receipt</b> — judged inside
+            EigenCompute, re-verifiable by anyone before money moves.
+          </p>
+          <div class="threshold-actions">
+            <button class="btn btn-primary btn-marquee" type="button" id="watch-proof-btn">
+              <span class="btn-glyph" aria-hidden="true">&#9654;</span>
+              <span class="btn-stack"><b>Watch the proof</b><small>runs live, 90 seconds</small></span>
+            </button>
+            <button class="btn btn-ghost btn-marquee" type="button" id="enter-console-btn">
+              <span class="btn-stack"><b>Open the console</b><small>drive it yourself</small></span>
+            </button>
+          </div>
+          <div class="threshold-judges" role="group" aria-label="Four live judges">
+            <span class="threshold-judges-label">Four judges live on EigenCompute — pick one to open its console</span>
+            <div class="threshold-judge-row">
+              <button type="button" class="judge-chip" data-entry-judge="code"><i></i>Code</button>
+              <button type="button" class="judge-chip" data-entry-judge="research"><i></i>Research</button>
+              <button type="button" class="judge-chip" data-entry-judge="negotiation"><i></i>Negotiation</button>
+              <button type="button" class="judge-chip" data-entry-judge="governance"><i></i>Governance</button>
+            </div>
+          </div>
         </div>
-        <div class="entry-receipt-card receipt-card-review">
-          <span class="receipt-kicker">Research receipt</span>
-          <strong>REVIEW</strong>
-          <div><span>Case</span><b>Source brief</b></div>
-          <div><span>Action</span><b>Hold for evidence</b></div>
-        </div>
-        <div class="entry-receipt-card receipt-card-fail">
-          <span class="receipt-kicker">Deal receipt</span>
-          <strong>REJECT</strong>
-          <div><span>Case</span><b>Term mismatch</b></div>
-          <div><span>Action</span><b>Block settlement</b></div>
-        </div>
-        <div class="entry-receipt-card receipt-card-govern">
-          <span class="receipt-kicker">Governance receipt</span>
-          <strong>ESCALATE</strong>
-          <div><span>Case</span><b>Treasury risk</b></div>
-          <div><span>Action</span><b>Request review</b></div>
-        </div>
+
+        <figure class="threshold-receipt" aria-label="Specimen of a signed decision receipt">
+          <div class="paper specimen">
+            <span class="specimen-tag">Specimen</span>
+            <header class="paper-head">
+              <span class="paper-brand">ProofJudge</span>
+              <span class="paper-doc">Decision receipt</span>
+            </header>
+            <div class="paper-verdict pass">
+              <small>Verdict</small>
+              <strong>ACCEPTED</strong>
+              <span>Release payment</span>
+            </div>
+            <dl class="paper-rows">
+              <div><dt>Case</dt><dd>PJ-C-1042 · OAuth callback hardening</dd></div>
+              <div><dt>Score</dt><dd>92 / 100 · 88% confidence</dd></div>
+              <div><dt>Artifact hash</dt><dd class="mono">7c1b08c4…e1a9</dd></div>
+              <div><dt>Signature</dt><dd class="mono">HMAC-SHA256 · 41f2c0aa…77be</dd></div>
+              <div><dt>Judge identity</dt><dd class="mono">0xd36476…e5aC0</dd></div>
+            </dl>
+            <div class="paper-foot">
+              <span class="paper-note">Edit any field above<br />and verification fails.</span>
+              <span class="seal" aria-hidden="true">
+                <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="32" cy="32" r="22.5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3.5"/><path d="M21 32.5l7.5 7.5L43 25.5" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+            </div>
+          </div>
+        </figure>
       </div>
 
-      <div class="entry-content">
-        <div class="entry-mark">EigenCloud Agent Private Preview</div>
-        <h1>ProofJudge</h1>
-        <p>When agents do paid work, counterparties need proof of who judged it and whether the receipt was edited. ProofJudge turns acceptance into a signed EigenCompute settlement record.</p>
-
-        <div class="entry-actions">
-          <button class="primary-button" type="button" id="enter-console-btn">Enter Console</button>
-          <button class="secondary-button" type="button" id="run-guided-btn">Run Guided Demo</button>
-        </div>
-
-        <div class="entry-identities" aria-label="Live judge identities">
-          <button type="button" data-entry-variant="code" aria-pressed="true">Code</button>
-          <button type="button" data-entry-variant="research" aria-pressed="false">Research</button>
-          <button type="button" data-entry-variant="negotiation" aria-pressed="false">Negotiation</button>
-          <button type="button" data-entry-variant="governance" aria-pressed="false">Governance</button>
-        </div>
-
-        <div class="entry-pipeline" aria-label="Proof pipeline">
-          <button type="button" data-entry-story="terms">Terms</button>
-          <i></i>
-          <button type="button" data-entry-story="compute">Evaluation</button>
-          <i></i>
-          <button type="button" data-entry-story="receipt">Verdict</button>
-          <i></i>
-          <button type="button" data-entry-story="verify">Receipt</button>
-          <i></i>
-          <button type="button" data-entry-story="live">Settlement</button>
-        </div>
-
-        <div class="entry-status-strip">
-          <span>EigenCompute Mainnet Alpha</span>
-          <span>4 judges online</span>
-          <span>Artifacts verifiable</span>
-        </div>
-      </div>
+      <footer class="ticker" aria-label="Simulated settlement activity">
+        <span class="ticker-tag">Simulated feed</span>
+        <div class="ticker-viewport"><div class="ticker-track" id="ticker-track"></div></div>
+      </footer>
     </section>
 
-    <section class="story-mode" id="story-mode" role="dialog" aria-modal="true" aria-labelledby="story-title" hidden>
-      <div class="story-shell">
-        <header class="story-topbar">
-          <div>
-            <span class="story-kicker" id="story-kicker">Code Bounty Escrow</span>
-            <h2 id="story-title">ProofJudge guided demo</h2>
-          </div>
-          <button class="story-icon-button" type="button" id="story-close-btn" aria-label="Close guided demo">Close</button>
-        </header>
-
-        <div class="story-progress" id="story-progress" aria-label="Guided demo progress"></div>
-
-        <div class="story-frame">
-          <div class="story-copy">
-            <p class="eyebrow" id="story-step-label">Scene 1</p>
-            <h3 id="story-heading">Paid work needs verifiable acceptance.</h3>
-            <p id="story-copy">A builder finished a bounty. The sponsor needs proof before releasing payment.</p>
-            <div class="story-points" id="story-points"></div>
-          </div>
-
-          <div class="story-visual" id="story-visual" aria-live="polite"></div>
-        </div>
-
-        <footer class="story-controls">
-          <div class="story-control-group">
-            <button class="secondary-button" type="button" id="story-back-btn">Back</button>
-            <button class="primary-button" type="button" id="story-next-btn">Next</button>
-          </div>
-          <div class="story-control-group">
-            <button class="secondary-button" type="button" id="story-autoplay-btn">Auto-play</button>
-            <button class="secondary-button" type="button" id="story-restart-btn">Restart</button>
-            <button class="danger-button" type="button" id="story-skip-live-btn">Skip to Live Console</button>
-          </div>
-        </footer>
-      </div>
-    </section>
-
-    <div class="app-shell" id="app-shell">
+    <!-- ──────────────────────────── CONSOLE ──────────────────────────── -->
+    <div class="console" id="console">
       <header class="topbar">
-        <a class="brand" href="/" aria-label="ProofJudge landing" data-show-entry>
-          <span class="brand-mark">PJ</span>
-          <span>
-            <strong>ProofJudge</strong>
-            <small>Verifiable receipts for paid agent work.</small>
+        <a class="brand" href="/" data-show-entry aria-label="ProofJudge intro">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64"><path d="M20 12h24v32l-4 4-4-4-4 4-4-4-4 4-4-4z" fill="currentColor" opacity="0.9"/><path d="M26 23h12M26 30h8" stroke="var(--ink-on-mark, #0b1118)" stroke-width="3" stroke-linecap="round"/><circle cx="40" cy="37" r="5" fill="var(--accent)"/></svg>
           </span>
+          <span class="brand-text"><strong>ProofJudge</strong><small>settlement receipts for agent work</small></span>
         </a>
 
         <div class="topbar-actions">
-          <a class="icon-link" href="/" data-show-entry>Intro</a>
-          <span class="status-pill" id="runtime-pill">Checking runtime</span>
-          <a class="icon-link" id="header-verify-link" href="https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0" target="_blank" rel="noopener">
-            EigenVerify
-          </a>
+          <span class="runtime-pill" id="runtime-pill" title="Live /healthz status"><i></i>checking</span>
+          <a class="top-link" id="header-verify-link" href="https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0" target="_blank" rel="noopener">EigenVerify ↗</a>
+          <button class="btn btn-primary btn-compact" type="button" id="proof-btn">
+            <span class="btn-glyph" aria-hidden="true">&#9654;</span> Run the proof
+          </button>
         </div>
       </header>
 
-      <div class="live-handoff-banner" id="live-handoff-banner" hidden>
-        <span>Live Console Handoff</span>
-        <strong id="live-handoff-title">Code Bounty loaded</strong>
-        <small id="live-handoff-copy">ProofJudge is about to run the live receipt flow.</small>
-      </div>
-
-      <div class="console-grid" id="console-grid">
-        <aside class="case-rail" aria-label="Work cases">
-          <div class="rail-heading">
-            <span>Cases</span>
-            <small>Start with paid work acceptance, then show the same receipt layer across other domains.</small>
-          </div>
-
-          <button class="case-card active" type="button" data-variant="code">
-            <span class="case-kicker">Primary</span>
-            <strong>Code Bounty</strong>
-            <small>Verify whether submitted work should release payment.</small>
+      <div class="console-frame">
+        <!-- Dock rail: cartridges in a bay -->
+        <nav class="dock-rail" aria-label="Chambers">
+          <button type="button" class="dock-slot station-slot" id="station-slot" title="Overview of all four judges">
+            <span class="dock-glyph" aria-hidden="true">
+              <svg viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="5.4" height="5.4" rx="1.4" fill="currentColor"/><rect x="9.1" y="1.5" width="5.4" height="5.4" rx="1.4" fill="currentColor" opacity="0.55"/><rect x="1.5" y="9.1" width="5.4" height="5.4" rx="1.4" fill="currentColor" opacity="0.55"/><rect x="9.1" y="9.1" width="5.4" height="5.4" rx="1.4" fill="currentColor" opacity="0.55"/></svg>
+            </span>
+            <span class="dock-label">Overview</span>
           </button>
-          <button class="case-card" type="button" data-variant="research">
-            <span class="case-kicker">Use Case</span>
-            <strong>Research Deliverable</strong>
-            <small>Accept, reject, or flag unsupported claims.</small>
+          <span class="dock-rule" aria-hidden="true"></span>
+          <button type="button" class="dock-slot" data-judge="code" title="Code Judge"><span class="dock-glyph mono">{ }</span><span class="dock-label">Code</span></button>
+          <button type="button" class="dock-slot" data-judge="research" title="Research Judge"><span class="dock-glyph mono">◎</span><span class="dock-label">Research</span></button>
+          <button type="button" class="dock-slot" data-judge="negotiation" title="Negotiation Judge"><span class="dock-glyph mono">⇄</span><span class="dock-label">Negotiate</span></button>
+          <button type="button" class="dock-slot" data-judge="governance" title="Governance Judge"><span class="dock-glyph mono">▲</span><span class="dock-label">Govern</span></button>
+          <span class="dock-spacer" aria-hidden="true"></span>
+          <button type="button" class="dock-slot dock-aux" id="open-ledger" title="Receipts sealed in this browser">
+            <span class="dock-glyph mono">≣</span>
+            <span class="dock-label">Ledger</span>
+            <span class="tab-badge" id="ledger-count" hidden></span>
           </button>
-          <button class="case-card" type="button" data-variant="negotiation">
-            <span class="case-kicker">Use Case</span>
-            <strong>Deal Terms</strong>
-            <small>Check required constraints before agreement.</small>
+          <button type="button" class="dock-slot dock-aux" id="open-trust" title="Verify any receipt; deployment registry">
+            <span class="dock-glyph mono">✓</span>
+            <span class="dock-label">Trust</span>
           </button>
-          <button class="case-card" type="button" data-variant="governance">
-            <span class="case-kicker">Use Case</span>
-            <strong>Governance Preflight</strong>
-            <small>Surface voting, treasury, and execution risk.</small>
-          </button>
+        </nav>
 
-          <div class="rail-note">
-            Verification proves the decision record came from the deployed evaluator and was not altered. It does not prove the verdict is objectively correct.
-          </div>
+        <div class="console-main">
+      <!-- Station: overview floor, four chambers -->
+      <section class="station" id="station" hidden aria-label="Judge overview">
+        <div class="station-inner">
+          <header class="station-head">
+            <p class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span>The station · four chambers</p>
+            <h1>One settlement layer.<br />Four sitting judges.</h1>
+            <p class="station-sub">
+              Each judge is the same proof machine deployed under its own EigenCompute identity.
+              Dock into a chamber to judge work — every receipt verifies against the same path.
+            </p>
+            <div class="station-stats mono" id="station-stats"></div>
+          </header>
+          <div class="station-grid" id="station-grid"></div>
+          <section class="station-recent">
+            <header>
+              <h3>Recent receipts</h3>
+              <small>sealed in this browser by the live judges</small>
+            </header>
+            <div id="station-recent-rows"></div>
+          </section>
+        </div>
+      </section>
 
-          <div class="demo-queue" id="demo-queue">
-            <div class="queue-heading">
-              <span>Guided Examples</span>
-              <small>Run live judge and verify paths.</small>
-            </div>
-
-            <article class="queue-card active" data-demo-card="code">
-              <strong>Code Bounty Settlement</strong>
-              <p>Did the OAuth callback fix meet the bounty terms?</p>
-              <small>Task terms -> PR summary -> rubric -> signed receipt -> verify -> tamper test</small>
-              <div>
-                <button class="quiet-button" type="button" data-preview-demo="code">Preview</button>
-                <button class="quiet-button strong" type="button" data-run-demo="code">Run Guided Demo</button>
-              </div>
-            </article>
-
-            <article class="queue-card" data-demo-card="research">
-              <strong>Research Deliverable Acceptance</strong>
-              <p>Sourced brief checked for evidence standard.</p>
-              <small>Claims, assumptions, caveats, and sources resolve into a receipt.</small>
-              <div>
-                <button class="quiet-button" type="button" data-preview-demo="research">Preview</button>
-                <button class="quiet-button" type="button" data-run-demo="research">Run</button>
-              </div>
-            </article>
-
-            <article class="queue-card" data-demo-card="negotiation">
-              <strong>Deal Terms Compliance</strong>
-              <p>Vendor proposal checked against required terms.</p>
-              <small>Budget, IP, fallback, milestones, and exceptions are checked.</small>
-              <div>
-                <button class="quiet-button" type="button" data-preview-demo="negotiation">Preview</button>
-                <button class="quiet-button" type="button" data-run-demo="negotiation">Run</button>
-              </div>
-            </article>
-
-            <article class="queue-card" data-demo-card="governance">
-              <strong>Governance Preflight</strong>
-              <p>DAO proposal checked before vote.</p>
-              <small>Treasury exposure, timelock, quorum, multisig, and response plan animate.</small>
-              <div>
-                <button class="quiet-button" type="button" data-preview-demo="governance">Preview</button>
-                <button class="quiet-button" type="button" data-run-demo="governance">Run</button>
-              </div>
-            </article>
-          </div>
+      <div class="console-body" id="chamber">
+        <!-- Docket -->
+        <aside class="docket glass" aria-label="Case docket">
+          <header class="docket-head">
+            <div><h2>Docket</h2><small id="docket-count">5 case files</small></div>
+            <button class="btn btn-quiet btn-compact" type="button" id="shuffle-case-btn" title="Pick a random case">Shuffle</button>
+          </header>
+          <div class="docket-list" id="docket-list" role="list"></div>
+          <p class="docket-note">
+            Case files are sample inputs. Every verdict, hash, and signature on the receipt comes from
+            the live judge — nothing is pre-baked.
+          </p>
         </aside>
 
-        <main class="workbench">
-          <nav class="surface-tabs" aria-label="Console surfaces">
-            <button class="tab active" type="button" data-view="evaluate">Workbench</button>
-            <button class="tab" type="button" data-view="receipts">Receipts</button>
-            <button class="tab" type="button" data-view="identity">Agents</button>
-            <button class="tab" type="button" data-view="verify">Verifier</button>
-            <button class="tab" type="button" data-view="demo">Demo</button>
-          </nav>
-
-          <section class="view-panel active" id="view-evaluate" data-view-panel="evaluate">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow" id="case-type">Code Bounty</p>
-                <h1 id="case-title">Settle paid work with a verifiable receipt.</h1>
-                <p id="case-copy">
-                  ProofJudge evaluates explicit task terms and submitted evidence inside EigenCompute, then emits a signed DecisionArtifact that downstream systems can verify before releasing, holding, or rejecting payment.
-                </p>
+        <!-- Bench -->
+        <main class="bench" aria-label="Judging bench">
+          <section class="panel glass" id="view-bench">
+            <header class="bench-head">
+              <div class="bench-head-copy">
+                <p class="eyebrow"><span id="case-kicker">Code judge</span><span class="case-id mono" id="case-id">PJ-C-1042</span></p>
+                <h1 id="case-title">OAuth callback hardening</h1>
+                <p class="bench-blurb" id="case-blurb">State validation, token hygiene, and tests for a GitHub OAuth fix.</p>
               </div>
-              <div class="settlement-gate" id="settlement-gate">
-                <span class="gate-label">Decision Receipt</span>
-                <strong>Awaiting verdict</strong>
-                <small>Input hash, evidence check, signature, and settlement action are pending.</small>
+              <div class="identity-capsule" id="identity-capsule">
+                <div title="The judge runs as a deployed app inside EigenCompute — not an anonymous script"><span>Runtime</span><strong>EigenCompute</strong></div>
+                <div title="The deployed identity that will sign this receipt. Inspect it on EigenVerify."><span>App ID</span><strong class="mono" id="configured-app-id">0xd364…5aC0</strong></div>
+                <div title="Whether the runtime carries TEE attestation — copied into every receipt"><span>Attestation</span><strong id="attestation-mode">awaiting receipt</strong></div>
               </div>
-            </div>
+            </header>
 
-            <div class="identity-strip" id="identity-strip">
-              <div>
-                <span>Runtime</span>
-                <strong>EigenCompute Mainnet Alpha</strong>
-              </div>
-              <div>
-                <span>Configured App ID</span>
-                <strong id="configured-app-id">0xd364...5aC0</strong>
-              </div>
-              <div>
-                <span>Verifier</span>
-                <a id="configured-verify-link" href="https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0" target="_blank" rel="noopener">Open EigenVerify</a>
-              </div>
-            </div>
-
-            <div class="proof-stepper" id="proof-stepper" aria-label="Proof pipeline">
-              <div class="proof-step" data-step="0"><span></span>Hashing input</div>
-              <div class="proof-step" data-step="1"><span></span>Evaluating rubric</div>
-              <div class="proof-step" data-step="2"><span></span>Checking evidence</div>
-              <div class="proof-step" data-step="3"><span></span>Sealing artifact</div>
-              <div class="proof-step" data-step="4"><span></span>Preparing receipt</div>
-            </div>
-
-            <div class="workspace-grid">
-              <form class="case-form" id="judge-form">
-                <div class="form-toolbar">
-                  <button class="quiet-button" type="button" id="load-demo-btn">Load Demo Case</button>
-                  <button class="quiet-button" type="button" id="clear-form-btn">Clear</button>
-                </div>
-
-                <label class="field">
-                  <span id="label-bounty">Task Terms</span>
-                  <textarea id="bountyDescription" name="bountyDescription" rows="4" required minlength="10"></textarea>
+            <form class="dossier" id="judge-form">
+              <div class="dossier-grid">
+                <label class="doc field">
+                  <span class="doc-label"><b id="label-terms">Task terms</b><small>what was promised</small></span>
+                  <textarea id="bountyDescription" name="bountyDescription" rows="4" required minlength="10" spellcheck="false"></textarea>
                 </label>
-
-                <label class="field">
-                  <span id="label-rubric">Acceptance Rubric</span>
-                  <textarea id="rubric" name="rubric" rows="5" required minlength="10"></textarea>
+                <label class="doc field">
+                  <span class="doc-label"><b id="label-rubric">Acceptance rubric</b><small>what “done” means</small></span>
+                  <textarea id="rubric" name="rubric" rows="4" required minlength="10" spellcheck="false"></textarea>
                 </label>
-
-                <label class="field">
-                  <span id="label-artifact">Submitted Work</span>
-                  <textarea id="submittedArtifact" name="submittedArtifact" rows="8" required minlength="10"></textarea>
+                <label class="doc field doc-wide">
+                  <span class="doc-label"><b id="label-work">Submitted work</b><small>what actually arrived — edit freely, then re-judge</small></span>
+                  <textarea id="submittedArtifact" name="submittedArtifact" rows="5" required minlength="10" spellcheck="false"></textarea>
                 </label>
-
-                <label class="field">
+              </div>
+              <div class="bench-run">
+                <label class="submitter-field">
                   <span>Submitter</span>
-                  <input id="submitter" name="submitter" type="text" placeholder="Address, handle, or agent id" />
+                  <input id="submitter" name="submitter" type="text" placeholder="address, handle, or agent id" />
                 </label>
-
-                <button class="primary-button" type="submit" id="submit-btn">
-                  <span id="submit-label">Generate Signed Verdict</span>
+                <button class="btn btn-primary btn-judge" type="submit" id="judge-btn">
+                  <span class="btn-stack"><b id="judge-btn-label">Judge this work</b><small>real call · signed result</small></span>
                 </button>
-              </form>
-
-              <section class="evidence-panel">
-                <div class="section-title">
-                  <span>Evidence Matrix</span>
-                  <small id="evidence-count">No receipt yet</small>
-                </div>
-                <div class="evidence-grid" id="evidence-grid">
-                  <div class="empty-state">
-                    Evidence rows appear after the judge evaluates task terms, rubric, and submitted work.
-                  </div>
-                </div>
-
-                <div class="reasoning-panel">
-                  <div class="section-title">
-                    <span>Reasoning Trace</span>
-                    <small>Signed into the receipt</small>
-                  </div>
-                  <ol id="reasoning-list" class="reasoning-list">
-                    <li>Generate a verdict to inspect the signed reasoning trace.</li>
-                  </ol>
-                </div>
-              </section>
-            </div>
-          </section>
-
-          <section class="view-panel" id="view-verify" data-view-panel="verify">
-            <div class="panel-header compact">
-              <div>
-                <p class="eyebrow">Verifier</p>
-                <h2>Verify Decision Artifact</h2>
-                <p>Check body integrity, artifact hash, signature, deployment identity, attestation mode, and timestamp presence.</p>
               </div>
-              <button class="secondary-button" type="button" id="verify-current-btn" disabled>Verify Current Receipt</button>
-            </div>
+            </form>
 
-            <div class="verify-layout">
-              <label class="field">
-                <span>Paste JSON Artifact</span>
-                <textarea id="verify-json" rows="12" placeholder="Paste a DecisionArtifact JSON object here"></textarea>
-              </label>
-              <div class="verify-actions">
-                <button class="secondary-button" type="button" id="verify-paste-btn">Verify Pasted JSON</button>
-                <button class="danger-button" type="button" id="tamper-btn" disabled>Tamper The Receipt</button>
-              </div>
-            </div>
-
-            <div class="verification-checklist" id="verification-checklist">
-              <div class="empty-state">Verification checks appear here.</div>
-            </div>
-
-            <div class="tamper-diff" id="tamper-diff" hidden></div>
-
-            <div class="trust-disclaimer">
-              <strong>What verification does not prove:</strong>
-              objective correctness of the verdict, offline third-party HMAC validation, or that every possible rubric interpretation is complete.
-            </div>
-          </section>
-
-          <section class="view-panel" id="view-identity" data-view-panel="identity">
-            <div class="panel-header compact">
-              <div>
-                <p class="eyebrow">Agent Identity</p>
-                <h2>EigenCompute deployment registry</h2>
-                <p>Each live judge has an app identity and EigenVerify dashboard. The generated receipt also carries the runtime identity that signed it.</p>
-              </div>
-            </div>
-
-            <div class="registry-grid" id="registry-grid"></div>
-
-            <div class="architecture-diagram" aria-label="Architecture diagram">
-              <div class="diagram-node">Terms + Rubric</div>
-              <div class="diagram-arrow">-&gt;</div>
-              <div class="diagram-node">Submitted Work</div>
-              <div class="diagram-arrow">-&gt;</div>
-              <div class="diagram-node strong">EigenCompute Judge</div>
-              <div class="diagram-arrow">-&gt;</div>
-              <div class="diagram-node">Signed DecisionArtifact</div>
-              <div class="diagram-arrow">-&gt;</div>
-              <div class="diagram-node strong">Verify / Tamper / Settle</div>
-            </div>
-          </section>
-
-          <section class="view-panel" id="view-receipts" data-view-panel="receipts">
-            <div class="panel-header compact">
-              <div>
-                <p class="eyebrow">Receipts</p>
-                <h2>Local receipt archive</h2>
-                <p>Recent generated artifacts are kept in this browser so the demo can reload, inspect, verify, and copy them.</p>
-              </div>
-              <button class="secondary-button" type="button" id="copy-json-btn" disabled>Copy Current JSON</button>
-            </div>
-
-            <div class="archive-table" id="archive-table">
-              <div class="empty-state">No receipts generated in this browser yet.</div>
-            </div>
-
-            <details class="json-drawer">
-              <summary>Signed JSON Drawer</summary>
-              <pre id="artifact-pre">{}</pre>
-            </details>
-          </section>
-
-          <section class="view-panel" id="view-demo" data-view-panel="demo">
-            <div class="panel-header compact">
-              <div>
-                <p class="eyebrow">Demo</p>
-                <h2>Three-minute stage path</h2>
-                <p>Use Code Bounty, generate a signed verdict, verify it, tamper with the score, then open the EigenVerify link.</p>
-              </div>
-            </div>
-
-            <div class="presenter-panel">
-              <div>
-                <span>Guided Demo Mode</span>
-                <strong id="guided-status">Ready</strong>
-              </div>
-              <div class="presenter-controls">
-                <button class="secondary-button" type="button" id="demo-auto-btn">Auto-run</button>
-                <button class="secondary-button" type="button" id="demo-reset-btn">Reset</button>
-                <button class="secondary-button" type="button" id="demo-skip-receipt-btn">Skip to Receipt</button>
-                <button class="secondary-button" type="button" id="demo-open-verify-btn">Open EigenVerify</button>
-              </div>
-            </div>
-
-            <ol class="demo-script">
-              <li>Agents are going to do paid work. The hard question is who verifies the acceptance judge.</li>
-              <li>ProofJudge evaluates explicit task terms, rubric, and submitted evidence inside EigenCompute.</li>
-              <li>The result is a signed DecisionArtifact: settlement action, model mode, hashes, app identity, and signature.</li>
-              <li>Verification proves the artifact body, hash, signature, and deployment identity still match.</li>
-              <li>Changing the score breaks verification immediately. ProofJudge makes AI judgment accountable.</li>
+            <ol class="pipeline" id="pipeline" aria-label="Judging pipeline">
+              <li class="pipe-step" data-step="0"><i></i><div><b>Hash inputs</b><small>fingerprint terms + work</small></div></li>
+              <li class="pipe-step" data-step="1"><i></i><div><b>Apply rubric</b><small>score each criterion</small></div></li>
+              <li class="pipe-step" data-step="2"><i></i><div><b>Collect evidence</b><small>keep the working notes</small></div></li>
+              <li class="pipe-step" data-step="3"><i></i><div><b>Seal artifact</b><small>freeze the record</small></div></li>
+              <li class="pipe-step" data-step="4"><i></i><div><b>Sign receipt</b><small>HMAC-SHA256</small></div></li>
             </ol>
+
+            <div class="findings" id="findings"></div>
           </section>
         </main>
 
-        <aside class="receipt-rail" id="receipt-rail" aria-label="Signed decision receipt">
-          <div class="receipt-card">
-            <div class="receipt-header">
-              <span>Signed Decision Receipt</span>
-              <strong id="receipt-state">Pending</strong>
+        <!-- Receipt desk -->
+        <aside class="desk glass" aria-label="Signed decision receipt">
+          <div class="desk-slot" id="desk-slot" data-state="pending">
+            <div class="receipt-tray" id="receipt-tray">
+              <p class="tray-line">No receipt on the desk.</p>
+              <p class="tray-sub">Judge a case and the sealed record prints here.</p>
             </div>
 
-            <div class="receipt-settlement" id="receipt-settlement">
-              <span>Settlement Action</span>
-              <strong>Awaiting verdict</strong>
-              <small>No receipt generated.</small>
-            </div>
-
-            <dl class="receipt-facts">
-              <div>
-                <dt>Decision</dt>
-                <dd id="receipt-decision">-</dd>
+            <article class="paper receipt" id="receipt" hidden>
+              <div class="receipt-banner" id="receipt-banner" hidden></div>
+              <header class="paper-head">
+                <span class="paper-brand">ProofJudge</span>
+                <span class="paper-doc" id="receipt-judge">Decision receipt</span>
+              </header>
+              <div class="paper-verdict" id="receipt-verdict-block">
+                <small>Verdict</small>
+                <strong id="receipt-verdict">—</strong>
+                <span id="receipt-action">—</span>
               </div>
-              <div>
-                <dt>Score</dt>
-                <dd id="receipt-score">-</dd>
+              <p class="paper-note action-note" id="receipt-action-note"></p>
+              <dl class="paper-rows">
+                <div><dt>Case</dt><dd id="receipt-case">—</dd></div>
+                <div data-row="score"><dt>Score</dt><dd id="receipt-score">—</dd></div>
+                <div><dt>Submitter</dt><dd id="receipt-submitter">—</dd></div>
+                <div><dt>Sealed</dt><dd id="receipt-time">—</dd></div>
+              </dl>
+              <details class="paper-forensics">
+                <summary>Forensic detail <span class="mono">hashes · identity · signature</span></summary>
+                <dl class="paper-rows mono-rows">
+                  <div><dt>Input hash</dt><dd class="mono" id="receipt-input-hash">—</dd></div>
+                  <div><dt>Artifact hash</dt><dd class="mono" id="receipt-artifact-hash">—</dd></div>
+                  <div><dt>Signature</dt><dd class="mono" id="receipt-signature">—</dd></div>
+                  <div><dt>App ID</dt><dd class="mono" id="receipt-app-id">—</dd></div>
+                  <div><dt>Model</dt><dd id="receipt-model">—</dd></div>
+                  <div><dt>Attestation</dt><dd id="receipt-attestation">—</dd></div>
+                </dl>
+              </details>
+              <div class="paper-foot">
+                <span class="paper-note" id="receipt-foot-note">Signed inside EigenCompute.<br />Edit any field and verification fails.</span>
+                <span class="seal" id="receipt-seal" aria-hidden="true">
+                  <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="32" cy="32" r="22.5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3.5"/><path d="M21 32.5l7.5 7.5L43 25.5" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
               </div>
-              <div>
-                <dt>Model Mode</dt>
-                <dd id="receipt-model">-</dd>
-              </div>
-              <div>
-                <dt>App ID</dt>
-                <dd id="receipt-app-id">-</dd>
-              </div>
-              <div>
-                <dt>Input Hash</dt>
-                <dd id="receipt-input-hash">-</dd>
-              </div>
-              <div>
-                <dt>Artifact Hash</dt>
-                <dd id="receipt-artifact-hash">-</dd>
-              </div>
-              <div>
-                <dt>Signature</dt>
-                <dd id="receipt-signature">-</dd>
-              </div>
-            </dl>
-
-            <div class="receipt-actions">
-              <button class="secondary-button" type="button" id="rail-verify-btn" disabled>Verify Decision Artifact</button>
-              <a class="icon-link block" id="rail-verify-link" href="https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0" target="_blank" rel="noopener">Open EigenVerify</a>
-            </div>
+            </article>
           </div>
+
+          <div class="desk-actions">
+            <button class="btn btn-ghost" type="button" id="verify-btn" disabled title="Re-check this receipt against the live verifier">Verify receipt</button>
+            <button class="btn btn-danger" type="button" id="tamper-btn" disabled title="Edit the score on a copy and re-verify — watch it fail">Tamper test</button>
+          </div>
+          <a class="desk-link" id="rail-verify-link" href="https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0" target="_blank" rel="noopener">Inspect this judge on EigenVerify ↗</a>
+
+          <div class="verify-readout" id="verify-readout" aria-live="polite"></div>
         </aside>
       </div>
+        </div><!-- /console-main -->
+      </div><!-- /console-frame -->
     </div>
+
+    <!-- ──────────────────────────── DRAWER (Ledger / Trust) ──────────────────────────── -->
+    <div class="drawer-veil" id="drawer-veil"></div>
+    <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <header class="drawer-head">
+        <h2 id="drawer-title">Ledger</h2>
+        <button class="btn btn-quiet btn-compact" type="button" id="drawer-close" aria-label="Close panel">Esc · close</button>
+      </header>
+      <div class="drawer-body">
+
+        <section class="drawer-panel" id="view-ledger" data-drawer-panel="ledger">
+          <header class="panel-head">
+            <div>
+              <h2>Receipts sealed in this browser</h2>
+              <p class="panel-sub">Every row is a real signed artifact from <span class="mono">/api/judge</span>. Load one back onto the desk, or copy its JSON and verify it anywhere.</p>
+            </div>
+            <button class="btn btn-quiet" type="button" id="copy-json-btn" disabled>Copy current JSON</button>
+          </header>
+          <div class="archive-table" id="archive-table">
+            <p class="empty-note">No receipts yet. Judge a case on the Bench and the sealed record lands here.</p>
+          </div>
+          <details class="json-drawer">
+            <summary>Signed JSON — the raw DecisionArtifact</summary>
+            <pre class="mono" id="artifact-pre">{}</pre>
+          </details>
+        </section>
+
+        <section class="drawer-panel" id="view-trust" data-drawer-panel="trust">
+          <header class="panel-head">
+            <div>
+              <h2>Verify anything. Trust nothing by default.</h2>
+              <p class="panel-sub">Paste any DecisionArtifact — from this console, another agent, or an API response — and check it against the live verifier.</p>
+            </div>
+          </header>
+
+          <div class="paste-verify">
+            <label class="doc field">
+              <span class="doc-label"><b>Paste a DecisionArtifact</b><small>raw JSON, exactly as signed</small></span>
+              <textarea id="verify-json" rows="9" spellcheck="false" placeholder='{ "schemaVersion": "proofjudge.decision.v1", … }'></textarea>
+            </label>
+            <button class="btn btn-primary" type="button" id="verify-paste-btn">Verify pasted JSON</button>
+            <div class="verify-readout" id="paste-readout"></div>
+          </div>
+
+          <section class="trust-block">
+            <h3>The deployed judges</h3>
+            <div class="registry-grid" id="registry-grid"></div>
+          </section>
+
+          <section class="trust-block">
+            <h3>How a verdict becomes proof</h3>
+            <ol class="spine" aria-label="Architecture">
+              <li><b>Terms + rubric</b><small>locked before judgment</small></li>
+              <li><b>Submitted work</b><small>hashed on arrival</small></li>
+              <li class="strong"><b>EigenCompute judge</b><small>scored under an app identity</small></li>
+              <li><b>Signed receipt</b><small>verdict + hashes + signature</small></li>
+              <li class="strong"><b>Verify · tamper-test · settle</b><small>before money moves</small></li>
+            </ol>
+          </section>
+
+          <section class="trust-block boundary">
+            <div class="boundary-col proves">
+              <h4>Verification proves</h4>
+              <ul>
+                <li>The receipt came from the deployed judge identity</li>
+                <li>No field changed after the verdict was signed</li>
+                <li>The hashes match the inputs that were judged</li>
+              </ul>
+            </div>
+            <div class="boundary-col limits">
+              <h4>It does not prove</h4>
+              <ul>
+                <li>That the verdict is objectively correct</li>
+                <li>That the rubric itself was wise</li>
+                <li>Offline third-party HMAC validation (service-verifiable today)</li>
+              </ul>
+            </div>
+          </section>
+        </section>
+
+      </div>
+    </aside>
+
+    <!-- ──────────────────────────── STAGE (the proof, presented) ──────────────────────────── -->
+    <section class="stage" id="stage" hidden aria-label="Guided proof">
+      <div class="stage-atmo" aria-hidden="true"></div>
+
+      <header class="stage-top">
+        <span class="stage-brand">ProofJudge <i>·</i> the proof, live</span>
+        <span class="stage-live" id="stage-live"><i></i><span id="stage-live-text">real judge · real signatures</span></span>
+        <button class="btn btn-quiet btn-compact" type="button" id="stage-exit" aria-label="Exit the proof">Esc · exit</button>
+      </header>
+
+      <div class="stage-canvas" id="stage-canvas" aria-live="polite"></div>
+
+      <div class="stage-cursor" id="stage-cursor" hidden aria-hidden="true">
+        <i class="cursor-ring"></i>
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <path d="M5.5 2.2 18 13.4l-6 .7 3.2 6.6-2.8 1.3-3.1-6.7-3.8 4z"
+            fill="#f4f6fa" stroke="#0b0f15" stroke-width="1.4" stroke-linejoin="round" />
+        </svg>
+      </div>
+
+      <footer class="stage-foot">
+        <div class="stage-caption" id="stage-caption">
+          <p class="stage-kicker" id="stage-kicker"></p>
+          <h2 class="stage-line" id="stage-line"></h2>
+          <p class="stage-sub" id="stage-sub"></p>
+        </div>
+        <div class="stage-rail" id="stage-rail" aria-label="Acts"></div>
+        <div class="stage-controls">
+          <button class="btn btn-ghost btn-compact" type="button" id="stage-back" disabled>← Back</button>
+          <button class="btn btn-primary" type="button" id="stage-next">Continue →</button>
+          <button class="btn btn-quiet btn-compact" type="button" id="stage-auto" aria-pressed="false">Auto-play</button>
+        </div>
+      </footer>
+    </section>
 
     <div class="toast" id="toast" hidden></div>
     <script src="/main.js" type="module"></script>

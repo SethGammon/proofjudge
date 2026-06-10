@@ -1,78 +1,80 @@
+import { CASE_LIBRARY, buildTickerFeed } from "./cases.js";
+
+/* ────────────────────────────── constants ─────────────────────────────── */
+
 const ARCHIVE_KEY = "proofjudge.receipts.v1";
 
 const APP_REGISTRY = {
   code: {
     appId: "0xd3647631C4706be744BE813cD0226e4f149e5aC0",
     ip: "34.12.29.220:3000",
-    label: "Code Bounty",
+    label: "Code Judge",
     verifyUrl: "https://verify.eigencloud.xyz/app/0xd3647631C4706be744BE813cD0226e4f149e5aC0"
   },
   research: {
     appId: "0x898E1d5603070C7452Ee7F8CF288639A63a217cc",
     ip: "35.204.155.165:3000",
-    label: "Research Deliverable",
+    label: "Research Judge",
     verifyUrl: "https://verify.eigencloud.xyz/app/0x898E1d5603070C7452Ee7F8CF288639A63a217cc"
   },
   negotiation: {
     appId: "0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322",
     ip: "34.58.112.209:3000",
-    label: "Deal Terms",
+    label: "Negotiation Judge",
     verifyUrl: "https://verify.eigencloud.xyz/app/0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322"
   },
   governance: {
     appId: "0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94",
     ip: "34.87.56.225:3000",
-    label: "Governance Preflight",
+    label: "Governance Judge",
     verifyUrl: "https://verify.eigencloud.xyz/app/0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94"
   }
 };
 
 const META = {
   code: {
-    accent: "#37d67a",
-    caseType: "Code Bounty",
-    title: "Settle a code bounty with proof.",
-    copy: "Evaluate submitted work against bounty terms inside EigenCompute, then seal the release, hold, or reject decision as a verifiable receipt.",
-    labels: {
-      bounty: "Task Terms",
-      rubric: "Acceptance Rubric",
-      artifact: "Submitted Code / Diff"
-    }
+    kicker: "Code judge",
+    labels: { terms: "Task terms", rubric: "Acceptance rubric", work: "Submitted code / diff" }
   },
   research: {
-    accent: "#5bb8ff",
-    caseType: "Research Deliverable",
-    title: "Accept research with evidence.",
-    copy: "Check submitted research against the promised evidence standard, then issue a receipt another team or agent can verify.",
-    labels: {
-      bounty: "Research Objective",
-      rubric: "Evidence Standard",
-      artifact: "Submitted Brief"
-    }
+    kicker: "Research judge",
+    labels: { terms: "Research objective", rubric: "Evidence standard", work: "Submitted brief" }
   },
   negotiation: {
-    accent: "#f0b84a",
-    caseType: "Deal Terms",
-    title: "Check deal-term compliance.",
-    copy: "Check required constraints before agreement and surface exceptions both counterparties can inspect in the signed receipt.",
-    labels: {
-      bounty: "Deal Context",
-      rubric: "Required Terms",
-      artifact: "Submitted Proposal"
-    }
+    kicker: "Negotiation judge",
+    labels: { terms: "Deal context", rubric: "Required terms", work: "Submitted proposal" }
   },
   governance: {
-    accent: "#b692ff",
-    caseType: "Governance Preflight",
-    title: "Preflight a governance vote.",
-    copy: "Surface voting, treasury, and execution risk before a proposal reaches a vote, then preserve the preflight result as a verifiable receipt.",
-    labels: {
-      bounty: "DAO / Protocol Context",
-      rubric: "Governance Risk Rubric",
-      artifact: "Proposal Text"
-    }
+    kicker: "Governance judge",
+    labels: { terms: "Protocol context", rubric: "Risk rubric", work: "Proposal text" }
   }
 };
+
+/* station card copy — overridden by live GET /api/variants when available */
+const STATION_META = {
+  code: {
+    icon: "{ }",
+    tagline: "Verifiable review for code bounties and PRs.",
+    problem: "Payment workflows can move value on-chain while acceptance still depends on off-chain evaluation with weak audit trails."
+  },
+  research: {
+    icon: "◎",
+    tagline: "Claims require sources. Sources require verification.",
+    problem: "AI research tools can hallucinate citations or overstate support. Claims are traced to evidence and the evaluation is signed."
+  },
+  negotiation: {
+    icon: "⇄",
+    tagline: "Neutral ground. Both parties can verify.",
+    problem: "Most negotiation tools serve one party. This judge is a party-neutral completeness check both sides can verify."
+  },
+  governance: {
+    icon: "▲",
+    tagline: "Proposals verified before votes are cast.",
+    problem: "Proposals can move treasury funds before voters understand the risk. The preflight assessment is signed before the vote opens."
+  }
+};
+
+const VERDICT_LABELS = { pass: "ACCEPTED", revise: "REVISE", fail: "REJECTED" };
 
 const SETTLEMENT_LABELS = {
   "release-payment": "Release payment",
@@ -81,1402 +83,799 @@ const SETTLEMENT_LABELS = {
   "escalate": "Escalate for appeal"
 };
 
-const PIPELINE_STEPS = [
-  "Hashing input",
-  "Evaluating acceptance rubric",
-  "Checking evidence",
-  "Sealing DecisionArtifact",
-  "Preparing verification receipt"
-];
+const PIPELINE_MIN_MS = 1500;
 
-const STORY_SCENES = [
-  {
-    id: "problem",
-    short: "Problem",
-    label: "Scene 1 / Problem",
-    title: "A builder finished paid bounty work.",
-    copy: "The sponsor wants to release payment, but a private chat or dashboard screenshot is not enough proof when money moves.",
-    points: [
-      "Builder or agent submits completed OAuth callback work.",
-      "Sponsor needs a neutral acceptance record.",
-      "Payment waits for proof the judge and receipt can be verified."
-    ],
-    duration: 6800
-  },
-  {
-    id: "submission",
-    short: "Submission",
-    label: "Scene 2 / Submission",
-    title: "The work package moves into ProofJudge.",
-    copy: "Task terms, rubric, submitted diff, and submitter identity become the input package for a verifiable judging run.",
-    points: [
-      "Terms and submitted work are captured together.",
-      "The input package can be hashed.",
-      "The sponsor no longer depends on a loose claim of completion."
-    ],
-    duration: 6600
-  },
-  {
-    id: "terms",
-    short: "Terms",
-    label: "Scene 3 / Terms",
-    title: "Acceptance terms lock before judgment.",
-    copy: "The rubric is explicit before funds move: state validation, token safety, tests, and documented failure modes.",
-    points: [
-      "Validate OAuth state parameter.",
-      "Avoid logging tokens.",
-      "Include tests and document failure modes."
-    ],
-    duration: 7000
-  },
-  {
-    id: "compute",
-    short: "EigenCompute",
-    label: "Scene 4 / EigenCompute",
-    title: "ProofJudge runs inside EigenCompute.",
-    copy: "The judging call is tied to an app identity, so the receipt can point back to the deployed evaluator that produced it.",
-    points: [
-      "Runtime: EigenCompute Mainnet Alpha.",
-      "App ID is carried into the receipt.",
-      "The live console preserves the same judge and verify APIs."
-    ],
-    duration: 7200
-  },
-  {
-    id: "receipt",
-    short: "Receipt",
-    label: "Scene 5 / Receipt",
-    title: "A signed DecisionArtifact appears.",
-    copy: "The output is not just a score. It includes decision, confidence, settlement action, hashes, app identity, and signature metadata.",
-    points: [
-      "Decision: pass, revise, or fail.",
-      "Settlement action: release, hold, reject, or escalate.",
-      "Artifact hash and signature make edits detectable."
-    ],
-    duration: 7300
-  },
-  {
-    id: "verify",
-    short: "Verify",
-    label: "Scene 6 / Verify",
-    title: "EigenVerify-style checks turn green.",
-    copy: "Verification checks the body, hash, signature, deployment identity, attestation mode, and timestamp before anyone trusts the receipt.",
-    points: [
-      "Body integrity still matches.",
-      "Signature and artifact hash verify.",
-      "The deployed app identity is visible."
-    ],
-    duration: 6900
-  },
-  {
-    id: "tamper",
-    short: "Tamper",
-    label: "Scene 7 / Tamper",
-    title: "Changing the score breaks verification.",
-    copy: "If someone edits the score after the receipt is sealed, the recomputed hash and signature checks fail clearly.",
-    points: [
-      "Original score and edited score diverge.",
-      "Artifact hash mismatch is visible.",
-      "Tamper failure protects the settlement record."
-    ],
-    duration: 7100
-  },
-  {
-    id: "live",
-    short: "Live",
-    label: "Scene 8 / Live Handoff",
-    title: "Now prove it live.",
-    copy: "The story hands into the real ProofJudge console, loads Code Bounty, and slowly runs judge, signed receipt, verify, and tamper failure.",
-    points: [
-      "Live Code Bounty case loads in the console.",
-      "The real /api/judge and /api/verify calls run.",
-      "Tamper failure is shown in the live verifier."
-    ],
-    duration: 5600
-  }
-];
+/* ────────────────────────────── state ─────────────────────────────────── */
 
-const STORY_ASSETS = {
-  builder: "/assets/demo/builder.svg",
-  sponsor: "/assets/demo/sponsor.svg",
-  compute: "/assets/demo/compute-node.svg",
-  receipt: "/assets/demo/receipt.svg",
-  verifier: "/assets/demo/verifier.svg",
-  tamper: "/assets/demo/tamper-fracture.svg"
-};
-
-const ENTRY_STORY_SCENES = {
-  terms: "terms",
-  compute: "compute",
-  receipt: "receipt",
-  verify: "verify",
-  live: "live"
-};
-
-const STORY_OPEN_MS = 520;
-const STORY_CLOSE_MS = 440;
-const STORY_REVEAL_BASE_MS = 90;
-const STORY_REVEAL_STEP_MS = 115;
-
-let currentVariant = "code";
-let currentView = "evaluate";
+let currentJudge = "code";
+let currentCase = null;
+let currentDrawer = null;
+let drawerOpener = null;
 let currentArtifact = null;
+let tamperedView = false;
+let stationOpen = false;
+let judgedCases = {};
+let runtimeOnline = null;
 let variantConfigs = {};
-let guidedRunning = false;
-let storyState = {
-  open: false,
-  index: 0,
-  autoplay: false,
-  timer: 0,
-  variant: "code",
-  liveRunning: false,
-  closeTimer: 0,
-  sequence: 0
-};
-let transitionChain = Promise.resolve();
+
+/* ────────────────────────────── refs ──────────────────────────────────── */
+
+const $ = (id) => document.getElementById(id);
 
 const refs = {
-  appShell: document.getElementById("app-shell"),
-  consoleGrid: document.getElementById("console-grid"),
-  workbench: document.querySelector(".workbench"),
-  entryLayer: document.getElementById("entry-layer"),
-  skipEntryBtn: document.getElementById("skip-entry-btn"),
-  enterConsoleBtn: document.getElementById("enter-console-btn"),
-  runGuidedBtn: document.getElementById("run-guided-btn"),
-  entryVariantBtns: document.querySelectorAll("[data-entry-variant]"),
-  entryStoryBtns: document.querySelectorAll("[data-entry-story]"),
-  storyMode: document.getElementById("story-mode"),
-  storyCloseBtn: document.getElementById("story-close-btn"),
-  storyKicker: document.getElementById("story-kicker"),
-  storyTitle: document.getElementById("story-title"),
-  storyProgress: document.getElementById("story-progress"),
-  storyStepLabel: document.getElementById("story-step-label"),
-  storyHeading: document.getElementById("story-heading"),
-  storyCopy: document.getElementById("story-copy"),
-  storyPoints: document.getElementById("story-points"),
-  storyVisual: document.getElementById("story-visual"),
-  storyBackBtn: document.getElementById("story-back-btn"),
-  storyNextBtn: document.getElementById("story-next-btn"),
-  storyAutoplayBtn: document.getElementById("story-autoplay-btn"),
-  storyRestartBtn: document.getElementById("story-restart-btn"),
-  storySkipLiveBtn: document.getElementById("story-skip-live-btn"),
-  liveHandoffBanner: document.getElementById("live-handoff-banner"),
-  liveHandoffTitle: document.getElementById("live-handoff-title"),
-  liveHandoffCopy: document.getElementById("live-handoff-copy"),
-  runtimePill: document.getElementById("runtime-pill"),
-  headerVerifyLink: document.getElementById("header-verify-link"),
-  configuredAppId: document.getElementById("configured-app-id"),
-  configuredVerifyLink: document.getElementById("configured-verify-link"),
-  railVerifyLink: document.getElementById("rail-verify-link"),
-  caseType: document.getElementById("case-type"),
-  caseTitle: document.getElementById("case-title"),
-  caseCopy: document.getElementById("case-copy"),
-  settlementGate: document.getElementById("settlement-gate"),
-  identityStrip: document.getElementById("identity-strip"),
-  labelBounty: document.getElementById("label-bounty"),
-  labelRubric: document.getElementById("label-rubric"),
-  labelArtifact: document.getElementById("label-artifact"),
-  form: document.getElementById("judge-form"),
-  submitBtn: document.getElementById("submit-btn"),
-  submitLabel: document.getElementById("submit-label"),
-  loadDemoBtn: document.getElementById("load-demo-btn"),
-  clearFormBtn: document.getElementById("clear-form-btn"),
-  proofStepper: document.getElementById("proof-stepper"),
-  evidenceGrid: document.getElementById("evidence-grid"),
-  evidenceCount: document.getElementById("evidence-count"),
-  reasoningList: document.getElementById("reasoning-list"),
-  verifyCurrentBtn: document.getElementById("verify-current-btn"),
-  verifyPasteBtn: document.getElementById("verify-paste-btn"),
-  verifyJson: document.getElementById("verify-json"),
-  verificationChecklist: document.getElementById("verification-checklist"),
-  tamperBtn: document.getElementById("tamper-btn"),
-  tamperDiff: document.getElementById("tamper-diff"),
-  registryGrid: document.getElementById("registry-grid"),
-  archiveTable: document.getElementById("archive-table"),
-  artifactPre: document.getElementById("artifact-pre"),
-  copyJsonBtn: document.getElementById("copy-json-btn"),
-  guidedStatus: document.getElementById("guided-status"),
-  demoAutoBtn: document.getElementById("demo-auto-btn"),
-  demoResetBtn: document.getElementById("demo-reset-btn"),
-  demoSkipReceiptBtn: document.getElementById("demo-skip-receipt-btn"),
-  demoOpenVerifyBtn: document.getElementById("demo-open-verify-btn"),
-  railVerifyBtn: document.getElementById("rail-verify-btn"),
-  receiptRail: document.getElementById("receipt-rail"),
-  receiptState: document.getElementById("receipt-state"),
-  receiptSettlement: document.getElementById("receipt-settlement"),
-  receiptDecision: document.getElementById("receipt-decision"),
-  receiptScore: document.getElementById("receipt-score"),
-  receiptModel: document.getElementById("receipt-model"),
-  receiptAppId: document.getElementById("receipt-app-id"),
-  receiptInputHash: document.getElementById("receipt-input-hash"),
-  receiptArtifactHash: document.getElementById("receipt-artifact-hash"),
-  receiptSignature: document.getElementById("receipt-signature"),
-  toast: document.getElementById("toast")
+  entry: $("entry"),
+  console: $("console"),
+  chamber: $("chamber"),
+  station: $("station"),
+  stationGrid: $("station-grid"),
+  stationStats: $("station-stats"),
+  stationRecentRows: $("station-recent-rows"),
+  stationSlot: $("station-slot"),
+  watchProofBtn: $("watch-proof-btn"),
+  enterConsoleBtn: $("enter-console-btn"),
+  tickerTrack: $("ticker-track"),
+
+  runtimePill: $("runtime-pill"),
+  headerVerifyLink: $("header-verify-link"),
+  proofBtn: $("proof-btn"),
+
+  docketList: $("docket-list"),
+  docketCount: $("docket-count"),
+  shuffleBtn: $("shuffle-case-btn"),
+
+  caseKicker: $("case-kicker"),
+  caseId: $("case-id"),
+  caseTitle: $("case-title"),
+  caseBlurb: $("case-blurb"),
+  configuredAppId: $("configured-app-id"),
+  attestationMode: $("attestation-mode"),
+
+  form: $("judge-form"),
+  labelTerms: $("label-terms"),
+  labelRubric: $("label-rubric"),
+  labelWork: $("label-work"),
+  judgeBtn: $("judge-btn"),
+  judgeBtnLabel: $("judge-btn-label"),
+  pipeline: $("pipeline"),
+
+  findings: $("findings"),
+
+  drawer: $("drawer"),
+  drawerVeil: $("drawer-veil"),
+  drawerTitle: $("drawer-title"),
+  drawerClose: $("drawer-close"),
+  openLedgerBtn: $("open-ledger"),
+  openTrustBtn: $("open-trust"),
+
+  ledgerCount: $("ledger-count"),
+  archiveTable: $("archive-table"),
+  artifactPre: $("artifact-pre"),
+  copyJsonBtn: $("copy-json-btn"),
+
+  verifyJson: $("verify-json"),
+  verifyPasteBtn: $("verify-paste-btn"),
+  pasteReadout: $("paste-readout"),
+  registryGrid: $("registry-grid"),
+
+  deskSlot: $("desk-slot"),
+  receipt: $("receipt"),
+  receiptBanner: $("receipt-banner"),
+  receiptJudge: $("receipt-judge"),
+  receiptVerdictBlock: $("receipt-verdict-block"),
+  receiptVerdict: $("receipt-verdict"),
+  receiptAction: $("receipt-action"),
+  receiptActionNote: $("receipt-action-note"),
+  receiptCase: $("receipt-case"),
+  receiptScore: $("receipt-score"),
+  receiptSubmitter: $("receipt-submitter"),
+  receiptTime: $("receipt-time"),
+  receiptInputHash: $("receipt-input-hash"),
+  receiptArtifactHash: $("receipt-artifact-hash"),
+  receiptSignature: $("receipt-signature"),
+  receiptAppId: $("receipt-app-id"),
+  receiptModel: $("receipt-model"),
+  receiptAttestation: $("receipt-attestation"),
+  verifyBtn: $("verify-btn"),
+  tamperBtn: $("tamper-btn"),
+  railVerifyLink: $("rail-verify-link"),
+  verifyReadout: $("verify-readout"),
+
+  stage: $("stage"),
+  stageCanvas: $("stage-canvas"),
+  stageCaption: $("stage-caption"),
+  stageKicker: $("stage-kicker"),
+  stageLine: $("stage-line"),
+  stageSub: $("stage-sub"),
+  stageRail: $("stage-rail"),
+  stageCursor: $("stage-cursor"),
+  stageBack: $("stage-back"),
+  stageNext: $("stage-next"),
+  stageAuto: $("stage-auto"),
+  stageExit: $("stage-exit"),
+
+  toast: $("toast")
 };
 
-document.querySelectorAll("[data-variant]").forEach((button) => {
-  button.addEventListener("click", () => {
-    selectVariant(button.dataset.variant, { push: true });
-  });
-});
+/* ────────────────────────────── routing ───────────────────────────────── */
 
-document.querySelectorAll("[data-view]").forEach((button) => {
-  button.addEventListener("click", () => {
-    clearToast();
-    setView(button.dataset.view, { push: true });
-  });
-});
+function route(options = {}) {
+  const path = window.location.pathname;
+  const match = path.match(/^\/agents\/(\w+)$/);
+  if (match && META[match[1]]) {
+    hideEntry({ instant: true });
+    showChamber(match[1], { push: false });
+  } else if (path === "/console" || path === "/agents") {
+    hideEntry({ instant: true });
+    showStation({ push: false });
+  } else {
+    showEntry();
+  }
+  const hash = window.location.hash.replace("#", "");
+  if (hash === "ledger" || hash === "trust") {
+    openDrawer(hash, { push: false });
+  } else {
+    closeDrawer({ push: false });
+  }
+}
 
-document.querySelectorAll("[data-preview-demo]").forEach((button) => {
-  button.addEventListener("click", async () => {
-    enterConsole();
-    await selectVariant(button.dataset.previewDemo, { push: true, loadDemo: true });
-    await setView("evaluate", { push: true });
-    updateGuidedStatus("Preview loaded");
-  });
-});
+/* ── surfaces: station (overview floor) vs chamber (one judge's bench) ── */
 
-document.querySelectorAll("[data-run-demo]").forEach((button) => {
-  button.addEventListener("click", () => runGuidedDemo(button.dataset.runDemo));
-});
+async function showStation(options = {}) {
+  if (options.push !== false) {
+    history.pushState(null, "", "/console");
+  }
 
-document.addEventListener("click", (event) => {
-  const link = event.target.closest("a[href]");
-  if (!link) return;
-  const href = link.getAttribute("href");
-  if (!href || href.startsWith("http") || href.startsWith("#") || href.startsWith("//")) return;
-  event.preventDefault();
-
-  if (href === "/" || link.dataset.showEntry !== undefined) {
-    showEntry({ push: true });
+  /* already on the floor — don't re-run the entrance */
+  if (stationOpen && !refs.station.hidden) {
+    refs.stationSlot.classList.add("active");
     return;
   }
 
-  history.pushState(null, "", href);
-  route();
-});
+  stationOpen = true;
+  pendingJudge = null; /* leaving the chamber voids any queued swap */
+  refs.stationSlot.classList.add("active");
+  document.querySelectorAll(".dock-rail .dock-slot[data-judge]").forEach((el) => el.classList.remove("active"));
 
-window.addEventListener("popstate", route);
+  /* step off the chamber floor: contents dim out before the lift */
+  const leavingChamber = !refs.chamber.hidden;
+  if (leavingChamber && !prefersReducedMotion()) {
+    refs.chamber.classList.add("floor-exit");
+    await wait(200);
+    refs.chamber.classList.remove("floor-exit");
+    if (!stationOpen) return; /* user changed their mind mid-exit */
+  }
 
-refs.skipEntryBtn?.addEventListener("click", () => enterConsole());
-refs.enterConsoleBtn.addEventListener("click", () => enterConsole());
-refs.runGuidedBtn.addEventListener("click", () => runGuidedDemo(currentVariant));
-refs.entryVariantBtns.forEach((button) => {
-  button.addEventListener("click", () => selectEntryVariant(button.dataset.entryVariant));
-});
-refs.entryStoryBtns.forEach((button) => {
-  button.addEventListener("click", () => openStoryMode(currentVariant, { startScene: button.dataset.entryStory }));
-});
-refs.storyCloseBtn.addEventListener("click", () => closeStoryMode());
-refs.storyBackBtn.addEventListener("click", () => previousStoryScene());
-refs.storyNextBtn.addEventListener("click", () => nextStoryScene());
-refs.storyAutoplayBtn.addEventListener("click", () => toggleStoryAutoplay());
-refs.storyRestartBtn.addEventListener("click", () => restartStoryMode());
-refs.storySkipLiveBtn.addEventListener("click", () => startLiveHandoff({ source: "skip" }));
-refs.storyProgress.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-story-jump]");
-  if (!button) return;
-  goToStoryScene(Number(button.dataset.storyJump), Number(button.dataset.storyJump) >= storyState.index ? "forward" : "back");
-});
-refs.loadDemoBtn.addEventListener("click", () => loadDemo(currentVariant));
-refs.clearFormBtn.addEventListener("click", () => {
-  refs.form.reset();
-  resetReceipt();
-});
-refs.demoAutoBtn.addEventListener("click", () => runGuidedDemo(currentVariant));
-refs.demoResetBtn.addEventListener("click", () => resetGuidedDemo());
-refs.demoSkipReceiptBtn.addEventListener("click", async () => {
-  enterConsole();
-  await loadDemo(currentVariant);
-  await generateReceipt({ guided: true });
-});
-refs.demoOpenVerifyBtn.addEventListener("click", () => {
-  const href = refs.railVerifyLink.href;
-  if (href) window.open(href, "_blank", "noopener");
-});
+  refs.station.hidden = false;
+  refs.chamber.hidden = true;
+  renderStation();
 
-refs.form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  await generateReceipt();
-});
+  /* the floor assembles piece by piece — every arrival, same ritual */
+  if (!prefersReducedMotion()) {
+    refs.station.classList.remove("arriving");
+    void refs.station.offsetWidth;
+    refs.station.classList.add("arriving");
+    window.clearTimeout(showStation.arriveTimer);
+    showStation.arriveTimer = window.setTimeout(() => refs.station.classList.remove("arriving"), 1500);
+  }
+}
 
-document.addEventListener("keydown", (event) => {
-  if (storyState.open) {
-    handleStoryKeydown(event);
+/* ── cartridge swap sequencer ──
+   Ghosts are snapshots of the old shells that wipe away while the real data
+   changes beneath them. Clicking another judge mid-wipe QUEUES a follow-up
+   swap: the running scan finishes revealing its target, then a fresh scan
+   triggers for the queued judge. Latest click wins the queue; nothing ever
+   resets mid-flight. */
+
+let swapGhostTimer = 0;
+let swapRunning = false;
+let pendingJudge = null;
+
+/* total wipe time: longest delay (2 × 140ms) + duration (950ms) + buffer */
+const SWAP_WIPE_MS = 1290;
+/* overview→chamber: a single canvas-wide ghost, no stagger — duration + buffer */
+const DOCK_WIPE_MS = 1010;
+
+function highlightDockSlot(judge) {
+  document.querySelectorAll(".dock-rail .dock-slot[data-judge]").forEach((el) => {
+    el.classList.toggle("active", el.dataset.judge === judge);
+  });
+  refs.stationSlot.classList.remove("active");
+}
+
+/* a ghost is a pixel-faithful snapshot: a copy of the fixed atmosphere layer,
+   aligned to where it sat behind the source element, with the element's clone
+   (its own glass, borders, shadows — nothing approximated) on top. Frame one
+   of a swap is therefore invisible; only the scan line announces it. */
+function buildGhost(sourceEl, viewportRect) {
+  const ghost = document.createElement("div");
+  ghost.classList.add("swap-ghost");
+  ghost.setAttribute("aria-hidden", "true");
+
+  /* freeze the OLD judge's accent: the rail and root accent flip to the new
+     judge immediately, but the snapshot keeps its original tint while wiping */
+  const rootStyle = getComputedStyle(document.documentElement);
+  ["--accent", "--accent-rgb", "--accent-ink"]
+    .forEach((name) => ghost.style.setProperty(name, rootStyle.getPropertyValue(name)));
+
+  const atmo = document.querySelector(".atmosphere");
+  if (atmo) {
+    const backdrop = atmo.cloneNode(true);
+    backdrop.classList.add("ghost-backdrop");
+    backdrop.style.left = `${-viewportRect.left}px`;
+    backdrop.style.top = `${-viewportRect.top}px`;
+    backdrop.style.width = `${window.innerWidth}px`;
+    backdrop.style.height = `${window.innerHeight}px`;
+    ghost.appendChild(backdrop);
+  }
+
+  const shell = sourceEl.cloneNode(true);
+  shell.removeAttribute("id");
+  shell.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+  shell.classList.add("ghost-shell");
+  shell.classList.remove("arriving"); /* never replay entrance animations */
+  ghost.appendChild(shell);
+
+  const line = document.createElement("i");
+  line.className = "swap-scanline";
+  ghost.appendChild(line);
+  return { ghost, shell };
+}
+
+function spawnSwapGhosts() {
+  const bodyRect = refs.chamber.getBoundingClientRect();
+  const shells = [".docket", ".bench", ".desk"]
+    .map((sel) => refs.chamber.querySelector(sel))
+    .filter(Boolean);
+
+  shells.forEach((shellEl, index) => {
+    const rect = shellEl.getBoundingClientRect();
+    const { ghost, shell } = buildGhost(shellEl, rect);
+    ghost.style.left = `${rect.left - bodyRect.left}px`;
+    ghost.style.top = `${rect.top - bodyRect.top}px`;
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.height = `${rect.height}px`;
+    ghost.style.setProperty("--ghost-delay", `${index * 140}ms`);
+    refs.chamber.appendChild(ghost);
+    shell.scrollTop = shellEl.scrollTop; /* keep the column's scroll position */
+  });
+
+  swapRunning = true;
+  window.clearTimeout(swapGhostTimer);
+  swapGhostTimer = window.setTimeout(finishSwap, SWAP_WIPE_MS);
+}
+
+/* overview→chamber: snapshot the whole floor as ONE ghost covering the canvas;
+   the chamber stands ready beneath while the scan wipes the floor away */
+function spawnDockGhost() {
+  const host = refs.station.parentElement; /* .console-main */
+  const { ghost, shell } = buildGhost(refs.station, host.getBoundingClientRect());
+  ghost.classList.add("dock-ghost");
+  host.appendChild(ghost);
+  shell.scrollTop = refs.station.scrollTop; /* keep the floor's scroll position */
+
+  swapRunning = true;
+  window.clearTimeout(swapGhostTimer);
+  swapGhostTimer = window.setTimeout(finishSwap, DOCK_WIPE_MS);
+}
+
+function finishSwap() {
+  document.querySelectorAll(".swap-ghost").forEach((ghost) => ghost.remove());
+  swapRunning = false;
+
+  /* rail + accent already flipped at click time (selectJudge) — nothing to
+     re-assert here. A judge queued mid-scan triggers its own scan now — unless
+     the user has meanwhile left the chamber (station/stage own the screen) */
+  const next = pendingJudge;
+  pendingJudge = null;
+  if (next && next !== currentJudge && !stationOpen && !refs.chamber.hidden && !stage.open) {
+    showChamber(next, { push: false }); /* URL already points at the latest */
+  }
+}
+
+function showChamber(judge, options = {}) {
+  const cartridgeSwap = !stationOpen && !refs.chamber.hidden && currentJudge !== judge;
+  const docking = stationOpen; /* arriving from the overview floor */
+
+  if (options.push !== false) {
+    history.pushState(null, "", `/agents/${judge}`);
+  }
+
+  /* scan in flight: queue this click. The rail acknowledges immediately;
+     the swap itself runs the moment the current scan completes. */
+  if (swapRunning) {
+    pendingJudge = judge;
+    highlightDockSlot(judge);
     return;
   }
 
-  if (!guidedRunning && event.key !== "Escape") return;
-  if (event.key === "r" || event.key === "R") resetGuidedDemo();
-  if (event.key === "v" || event.key === "V") verifyCurrentReceipt();
-  if (event.key === "t" || event.key === "T") refs.tamperBtn.click();
-  if (event.key === "e" || event.key === "E") refs.demoOpenVerifyBtn.click();
-  if (event.key === "Escape") {
-    guidedRunning = false;
-    updateGuidedStatus("Exited");
-    clearSpotlights();
+  if (currentJudge === judge && !stationOpen && !refs.chamber.hidden) {
+    highlightDockSlot(judge);
+    return; /* already seated — nothing to swap */
   }
-});
+
+  /* snapshot the old surface BEFORE the data changes: panel ghosts for an
+     agent→agent swap, one canvas-wide floor ghost when docking from overview */
+  if (cartridgeSwap && !prefersReducedMotion()) {
+    spawnSwapGhosts();
+  }
+  if (docking && !prefersReducedMotion()) {
+    spawnDockGhost();
+  }
+
+  stationOpen = false;
+  refs.station.hidden = true;
+  refs.chamber.hidden = false;
+  refs.stationSlot.classList.remove("active");
+  loadCase.suppressDelivery = true;
+  selectJudge(judge, { push: false });
+  loadCase.suppressDelivery = false;
+
+  /* the rail, accent, and content have all flipped at click time — the ghosts
+     hold the old tint; ride the wipe line in the incoming judge's color */
+  if ((cartridgeSwap || docking) && !prefersReducedMotion()) {
+    const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent-rgb");
+    document.querySelectorAll(".swap-scanline").forEach((line) => line.style.setProperty("--accent-rgb", accent));
+  }
+}
+
+function showEntry() {
+  refs.entry.hidden = false;
+  refs.entry.classList.remove("leaving");
+  document.body.classList.add("entry-open");
+  renderTicker();
+  startTicker();
+}
+
+function hideEntry(options = {}) {
+  document.body.classList.remove("entry-open");
+  stopTicker();
+  if (refs.entry.hidden) return;
+  if (options.instant || prefersReducedMotion()) {
+    refs.entry.hidden = true;
+    return;
+  }
+  refs.entry.classList.add("leaving");
+  window.setTimeout(() => {
+    refs.entry.hidden = true;
+    refs.entry.classList.remove("leaving");
+  }, 480);
+}
+
+function enterChamber(judge, options = {}) {
+  hideEntry();
+  showChamber(judge, options);
+}
+
+/* ────────────────────────────── drawer ────────────────────────────────── */
+
+const DRAWER_TITLES = { ledger: "Ledger", trust: "Trust" };
+
+function openDrawer(name, options = {}) {
+  if (!DRAWER_TITLES[name]) return;
+  currentDrawer = name;
+  drawerOpener = options.opener ?? null;
+  refs.drawerTitle.textContent = DRAWER_TITLES[name];
+  document.querySelectorAll("[data-drawer-panel]").forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.drawerPanel === name);
+  });
+  refs.drawer.classList.add("open");
+  refs.drawerVeil.classList.add("open");
+  refs.drawerClose.focus({ preventScroll: true });
+  if (options.push !== false) {
+    history.replaceState(null, "", `${window.location.pathname}#${name}`);
+  }
+}
+
+function closeDrawer(options = {}) {
+  if (!currentDrawer) return;
+  currentDrawer = null;
+  refs.drawer.classList.remove("open");
+  refs.drawerVeil.classList.remove("open");
+  if (options.push !== false) {
+    history.replaceState(null, "", window.location.pathname);
+  }
+  drawerOpener?.focus({ preventScroll: true });
+  drawerOpener = null;
+}
+
+/* ────────────────────────────── judges & cases ────────────────────────── */
+
+function selectJudge(judge, options = {}) {
+  if (!META[judge]) return;
+  const changed = currentJudge !== judge;
+  currentJudge = judge;
+
+  document.documentElement.dataset.judge = judge;
+  document.querySelectorAll("[data-judge], [data-entry-judge]").forEach((el) => {
+    const value = el.dataset.judge ?? el.dataset.entryJudge;
+    if (el.classList.contains("judge-chip") || el.classList.contains("dock-slot")) {
+      el.classList.toggle("active", value === judge && !stationOpen);
+    }
+  });
+
+  const meta = META[judge];
+  const app = APP_REGISTRY[judge];
+  refs.labelTerms.textContent = meta.labels.terms;
+  refs.labelRubric.textContent = meta.labels.rubric;
+  refs.labelWork.textContent = meta.labels.work;
+  refs.caseKicker.textContent = meta.kicker;
+  refs.configuredAppId.textContent = shortAddress(app.appId);
+  refs.headerVerifyLink.href = app.verifyUrl;
+  refs.railVerifyLink.href = app.verifyUrl;
+
+  renderRegistry();
+  renderDocket();
+
+  if (changed || !currentCase) {
+    loadCase(CASE_LIBRARY[judge][0], { resetReceipt: changed });
+  }
+
+  if (options.push) {
+    history.pushState(null, "", `/agents/${judge}${currentDrawer ? `#${currentDrawer}` : ""}`);
+  }
+}
+
+function renderDocket() {
+  const cases = CASE_LIBRARY[currentJudge];
+  refs.docketCount.textContent = `${cases.length} case files`;
+  refs.docketList.innerHTML = cases
+    .map(
+      (c) => `
+      <button type="button" role="listitem" class="case-card ${currentCase?.id === c.id ? "active" : ""}" data-case="${c.id}">
+        <span class="case-meta"><span>${esc(c.id)}</span>${
+          judgedCases[c.id] ? `<i class="case-verdict-dot ${judgedCases[c.id]}" title="judged this session: ${judgedCases[c.id]}"></i>` : ""
+        }</span>
+        <strong>${esc(c.title)}</strong>
+        <small>${esc(c.blurb)}</small>
+      </button>`
+    )
+    .join("");
+}
+
+function loadCase(caseFile, options = {}) {
+  if (!caseFile) return;
+  currentCase = caseFile;
+  refs.caseId.textContent = caseFile.id;
+  refs.caseTitle.textContent = caseFile.title;
+  refs.caseBlurb.textContent = caseFile.blurb;
+  refs.form.elements.bountyDescription.value = caseFile.terms;
+  refs.form.elements.rubric.value = caseFile.rubric;
+  refs.form.elements.submittedArtifact.value = caseFile.work;
+  refs.form.elements.submitter.value = caseFile.submitter ?? "";
+  refs.docketList.querySelectorAll(".case-card").forEach((card) => {
+    card.classList.toggle("active", card.dataset.case === caseFile.id);
+  });
+  window.requestAnimationFrame(() => autosizeDossier());
+
+  /* the case visibly lands on the bench (unless a full cartridge swap is animating) */
+  const benchPanel = $("view-bench");
+  if (!prefersReducedMotion() && !refs.chamber.hidden && !loadCase.suppressDelivery) {
+    benchPanel.classList.remove("delivering");
+    void benchPanel.offsetWidth;
+    benchPanel.classList.add("delivering");
+    window.clearTimeout(loadCase.deliverTimer);
+    loadCase.deliverTimer = window.setTimeout(() => benchPanel.classList.remove("delivering"), 700);
+  }
+
+  if (options.resetReceipt !== false) resetReceipt();
+}
+
+function shuffleCase() {
+  const cases = CASE_LIBRARY[currentJudge].filter((c) => c.id !== currentCase?.id);
+  const next = cases[Math.floor(Math.random() * cases.length)];
+  loadCase(next);
+  showToast(`Case file ${next.id} on the bench.`);
+}
+
+/* ────────────────────────────── judging ───────────────────────────────── */
 
 async function generateReceipt(options = {}) {
   const body = {
-    variant: currentVariant,
+    variant: currentJudge,
     bountyDescription: refs.form.elements.bountyDescription.value,
     rubric: refs.form.elements.rubric.value,
     submittedArtifact: refs.form.elements.submittedArtifact.value,
     submitter: refs.form.elements.submitter.value || undefined
   };
 
-  setLoading(true);
-  resetVerification();
+  setJudging(true);
+  clearVerifyReadout();
+  refs.deskSlot.dataset.state = "pending";
+  refs.receipt.hidden = true;
+  refs.receiptBanner.hidden = true;
 
   try {
-    const judgePromise = apiFetch("/api/judge", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    const [data] = await Promise.all([judgePromise, runPipeline()]);
-    renderArtifact(data.artifact, { save: true });
-    showToast("Signed DecisionArtifact generated.");
+    const [data] = await Promise.all([
+      apiFetch("/api/judge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      }),
+      runPipeline()
+    ]);
+    if (currentCase) {
+      judgedCases[currentCase.id] = data.artifact.decision;
+      renderDocket();
+    }
+    renderReceipt(data.artifact, { animate: true, save: true });
+    return data.artifact;
   } catch (error) {
-    showToast(`Judging failed: ${error.message}`, "error");
     resetPipeline();
+    showToast(`Judging failed: ${error.message}`, "error");
+    throw error;
   } finally {
-    setLoading(false);
+    setJudging(false);
   }
 }
 
-refs.verifyCurrentBtn.addEventListener("click", () => verifyCurrentReceipt());
-refs.railVerifyBtn.addEventListener("click", () => verifyCurrentReceipt());
-
-refs.verifyPasteBtn.addEventListener("click", async () => {
-  try {
-    const artifact = JSON.parse(refs.verifyJson.value);
-    await verifyArtifact(artifact, { source: "pasted" });
-  } catch (error) {
-    refs.verificationChecklist.innerHTML = failRow("Pasted JSON", `Unable to parse or verify JSON: ${error.message}`);
-  }
-});
-
-refs.tamperBtn.addEventListener("click", () => {
-  tamperCurrentReceipt();
-});
-
-refs.copyJsonBtn.addEventListener("click", async () => {
-  if (!currentArtifact) return;
-  const json = JSON.stringify(currentArtifact, null, 2);
-  try {
-    await navigator.clipboard.writeText(json);
-    showToast("Current receipt JSON copied.");
-  } catch {
-    refs.verifyJson.value = json;
-    setView("verify", { push: true });
-    showToast("Clipboard unavailable. JSON placed in verifier.");
-  }
-});
-
-refs.archiveTable.addEventListener("click", (event) => {
-  const loadButton = event.target.closest("[data-load-receipt]");
-  if (!loadButton) return;
-  const archive = readArchive();
-  const record = archive[Number(loadButton.dataset.loadReceipt)];
-  if (!record?.artifact) return;
-  renderArtifact(record.artifact, { save: false });
-  setView("receipts", { push: true });
-});
-
-async function init() {
-  renderRegistry();
-  renderArchive();
-  resetReceipt();
-
-  try {
-    const data = await apiFetch("/api/variants");
-    variantConfigs = Object.fromEntries(data.variants.map((variant) => [variant.id, variant]));
-  } catch {
-    variantConfigs = {};
-  }
-
-  await route({ transition: false });
-  await loadDemo(currentVariant, { transition: false });
-  pingRuntime();
-  if (window.location.pathname.startsWith("/agents/")) {
-    refs.entryLayer.hidden = true;
-  }
-}
-
-function enterConsole(options = {}) {
-  closeStoryMode({ silent: true });
-  if (options.push !== false && !window.location.pathname.startsWith("/agents/")) {
-    history.pushState(null, "", `/agents/${currentVariant}#${currentView}`);
-  }
-  if (refs.entryLayer.hidden) return;
-  window.scrollTo({ top: 0, behavior: "auto" });
-  refs.entryLayer.classList.add("leaving");
-  sessionStorage.setItem("proofjudge.entry.dismissed", "true");
-  window.setTimeout(() => {
-    refs.entryLayer.hidden = true;
-  }, prefersReducedMotion() ? 1 : 520);
-}
-
-function showEntry(options = {}) {
-  guidedRunning = false;
-  closeStoryMode({ silent: true });
-  clearSpotlights();
-  clearToast();
-  hideLiveHandoffBanner();
-  sessionStorage.removeItem("proofjudge.entry.dismissed");
-
-  if (options.push && (window.location.pathname !== "/" || window.location.search || window.location.hash)) {
-    history.pushState(null, "", "/");
-  }
-
-  refs.entryLayer.hidden = false;
-  refs.entryLayer.classList.remove("leaving");
-  window.scrollTo({ top: 0, behavior: "auto" });
-}
-
-function runGuidedDemo(variant = currentVariant) {
-  openStoryMode(variant);
-}
-
-function openStoryMode(variant = "code", options = {}) {
-  if (storyState.liveRunning) return;
-  window.clearTimeout(storyState.closeTimer);
-  storyState.open = true;
-  storyState.variant = variant;
-  storyState.index = storySceneIndex(options.startScene);
-  storyState.autoplay = false;
-  window.clearTimeout(storyState.timer);
-  refs.storyMode.hidden = false;
-  refs.storyMode.classList.remove("closing");
-  refs.entryLayer.classList.add("story-launching");
-  document.body.classList.add("story-open");
-  refs.storyKicker.textContent = "Code Bounty Escrow";
-  renderStoryScene({ direction: "forward" });
-  window.requestAnimationFrame(() => {
-    refs.storyMode.classList.add("active");
-  });
-}
-
-function storySceneIndex(sceneId) {
-  if (!sceneId) return 0;
-  const resolvedId = ENTRY_STORY_SCENES[sceneId] ?? sceneId;
-  const index = STORY_SCENES.findIndex((scene) => scene.id === resolvedId);
-  return index >= 0 ? index : 0;
-}
-
-function selectEntryVariant(variant) {
-  if (!META[variant]) return;
-  selectVariant(variant, { push: false, transition: false });
-}
-
-function updateEntryVariantSelection(variant) {
-  refs.entryVariantBtns.forEach((button) => {
-    const active = button.dataset.entryVariant === variant;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
-  document.querySelectorAll(".entry-receipt-card").forEach((card, index) => {
-    const order = ["code", "research", "negotiation", "governance"];
-    const active = order[index] === variant;
-    card.classList.toggle("selected", active);
-  });
-}
-
-function closeStoryMode(options = {}) {
-  if (!storyState.open && refs.storyMode.hidden) return;
-  pauseStoryAutoplay();
-  storyState.open = false;
-  refs.storyMode.classList.remove("active", "is-sequencing");
-  refs.storyMode.classList.add("closing");
-  window.clearTimeout(storyState.closeTimer);
-  const finish = () => {
-    refs.storyMode.hidden = true;
-    refs.storyMode.classList.remove("closing");
-    refs.entryLayer.classList.remove("story-launching");
-  };
-  if (options.instant || prefersReducedMotion()) {
-    finish();
-  } else {
-    storyState.closeTimer = window.setTimeout(finish, STORY_CLOSE_MS);
-  }
-  document.body.classList.remove("story-open");
-  if (!options.silent) {
-    refs.runGuidedBtn?.focus({ preventScroll: true });
-  }
-}
-
-function renderStoryScene(options = {}) {
-  const scene = STORY_SCENES[storyState.index] ?? STORY_SCENES[0];
-  storyState.sequence += 1;
-  refs.storyMode.dataset.scene = scene.id;
-  refs.storyMode.dataset.direction = options.direction ?? "forward";
-  refs.storyMode.dataset.sequence = String(storyState.sequence);
-  refs.storyTitle.textContent = scene.title;
-  refs.storyStepLabel.textContent = scene.label;
-  refs.storyHeading.textContent = scene.title;
-  refs.storyCopy.textContent = scene.copy;
-  refs.storyPoints.innerHTML = scene.points.map((point) => `<span>${esc(point)}</span>`).join("");
-  refs.storyVisual.innerHTML = renderStoryVisual(scene);
-  stampStoryRevealSequence();
-  refs.storyBackBtn.disabled = storyState.index === 0 || storyState.liveRunning;
-  refs.storyNextBtn.disabled = storyState.liveRunning;
-  refs.storyNextBtn.textContent = storyState.index === STORY_SCENES.length - 1 ? "Now Prove It Live" : "Next";
-  refs.storyAutoplayBtn.textContent = storyState.autoplay ? "Pause" : "Auto-play";
-  refs.storyAutoplayBtn.disabled = storyState.liveRunning;
-  refs.storyRestartBtn.disabled = storyState.liveRunning;
-  refs.storySkipLiveBtn.disabled = storyState.liveRunning;
-  refs.storyProgress.innerHTML = STORY_SCENES.map((item, index) => `
-    <button type="button" class="${index === storyState.index ? "active" : ""}" data-story-jump="${index}" ${storyState.liveRunning ? "disabled" : ""}>
-      <span>${index + 1}</span>
-      <small>${esc(item.short)}</small>
-    </button>
-  `).join("");
-
-  if (storyState.autoplay) {
-    scheduleStoryAutoplay(scene);
-  }
-}
-
-function goToStoryScene(index, direction = "forward") {
-  if (storyState.liveRunning) return;
-  const nextIndex = Math.max(0, Math.min(STORY_SCENES.length - 1, index));
-  if (nextIndex === storyState.index && storyState.open) {
-    renderStoryScene({ direction });
-    return;
-  }
-  pauseStoryAutoplay();
-  storyState.index = nextIndex;
-  renderStoryScene({ direction });
-}
-
-function stampStoryRevealSequence() {
-  const fixedReveals = [
-    [refs.storyStepLabel, 0, "meta"],
-    [refs.storyHeading, 1, "headline"],
-    [refs.storyCopy, 2, "copy"],
-    [refs.storyVisual, 3, "panel"]
-  ];
-
-  fixedReveals.forEach(([element, order, type]) => setStoryReveal(element, order, type));
-  refs.storyPoints.querySelectorAll("span").forEach((point, index) => {
-    setStoryReveal(point, index + 4, "point");
-  });
-
-  refs.storyMode.classList.remove("is-sequencing");
-  void refs.storyMode.offsetWidth;
-  refs.storyMode.classList.add("is-sequencing");
-}
-
-function setStoryReveal(element, order, type = "item") {
-  if (!element) return;
-  element.dataset.reveal = type;
-  element.style.setProperty("--reveal-delay", `${storyRevealDelay(order)}ms`);
-}
-
-function storyRevealDelay(order) {
-  if (prefersReducedMotion()) return 0;
-  return STORY_REVEAL_BASE_MS + order * STORY_REVEAL_STEP_MS;
-}
-
-function storyRevealAttr(order, type = "item", extraStyle = "") {
-  const style = [`--reveal-delay:${storyRevealDelay(order)}ms`];
-  if (extraStyle) style.push(extraStyle);
-  return `data-reveal="${type}" style="${style.join(";")}"`;
-}
-
-function renderStoryVisual(scene) {
-  const appId = shortAddress(APP_REGISTRY.code.appId);
-  if (scene.id === "problem") {
-    return `
-      <div class="story-stage story-stage-problem">
-        <div class="story-actor" ${storyRevealAttr(4, "actor-left")}>
-          <img src="${STORY_ASSETS.builder}" alt="" />
-          <strong>Builder / agent</strong>
-          <span>Work complete</span>
-        </div>
-        <div class="story-payment-line" ${storyRevealAttr(5, "bridge")}>
-          <span>Payment waits</span>
-          <i></i>
-          <small>proof required</small>
-        </div>
-        <div class="story-actor sponsor" ${storyRevealAttr(6, "actor-right")}>
-          <img src="${STORY_ASSETS.sponsor}" alt="" />
-          <strong>Sponsor</strong>
-          <span>Needs acceptance proof</span>
-        </div>
-      </div>
-    `;
-  }
-
-  if (scene.id === "submission") {
-    return `
-      <div class="story-stage story-stage-submission">
-        <div class="story-actor compact" ${storyRevealAttr(4, "sender")}>
-          <img src="${STORY_ASSETS.builder}" alt="" />
-          <strong>Builder</strong>
-        </div>
-        <div class="story-work-package" ${storyRevealAttr(5, "package")}>
-          <span ${storyRevealAttr(6, "package-item")}>Code diff</span>
-          <span ${storyRevealAttr(7, "package-item")}>Task terms</span>
-          <span ${storyRevealAttr(8, "package-item")}>Rubric</span>
-          <span ${storyRevealAttr(9, "package-item")}>Submitter</span>
-        </div>
-        <div class="story-compute-card" ${storyRevealAttr(10, "receiver")}>
-          <img src="${STORY_ASSETS.compute}" alt="" />
-          <strong>ProofJudge</strong>
-          <small>Input package accepted</small>
-        </div>
-      </div>
-    `;
-  }
-
-  if (scene.id === "terms") {
-    return `
-      <div class="story-stage story-stage-terms">
-        ${["State validation", "Token safety", "Unit tests", "Failure docs"].map((term, index) => `
-          <div class="story-term-card" ${storyRevealAttr(index + 4, "lock-card", `--term-delay:${index * 110}ms`)}>
-            <span>LOCKED</span>
-            <strong>${term}</strong>
-            <small>Acceptance term ${index + 1}</small>
-          </div>
-        `).join("")}
-      </div>
-    `;
-  }
-
-  if (scene.id === "compute") {
-    return `
-      <div class="story-stage story-stage-compute">
-        <div class="story-compute-core" ${storyRevealAttr(4, "compute-core")}>
-          <img src="${STORY_ASSETS.compute}" alt="" />
-          <strong>EigenCompute Judge</strong>
-          <span>App ID ${appId}</span>
-        </div>
-        <div class="story-app-facts" ${storyRevealAttr(5, "fact-stack")}>
-          <span ${storyRevealAttr(6, "fact")}>Runtime identity</span>
-          <span ${storyRevealAttr(7, "fact")}>Receipt signer</span>
-          <span ${storyRevealAttr(8, "fact")}>Attestation mode</span>
-        </div>
-      </div>
-    `;
-  }
-
-  if (scene.id === "receipt") {
-    return `
-      <div class="story-stage story-stage-receipt">
-        <div class="story-receipt-card" ${storyRevealAttr(4, "receipt-shell")}>
-          <img src="${STORY_ASSETS.receipt}" alt="" ${storyRevealAttr(5, "seal-icon")} />
-          <span ${storyRevealAttr(6, "receipt-label")}>DecisionArtifact</span>
-          <strong ${storyRevealAttr(7, "stamp")}>PASS</strong>
-          <dl>
-            <div ${storyRevealAttr(8, "receipt-row")}><dt>Score</dt><dd>92 / 100</dd></div>
-            <div ${storyRevealAttr(9, "receipt-row")}><dt>Settlement</dt><dd>Release payment</dd></div>
-            <div ${storyRevealAttr(10, "receipt-row")}><dt>App ID</dt><dd>${appId}</dd></div>
-            <div ${storyRevealAttr(11, "receipt-row")}><dt>Hash</dt><dd>0x8f3a...c91e</dd></div>
-            <div ${storyRevealAttr(12, "receipt-row")}><dt>Signature</dt><dd>HMAC-SHA256</dd></div>
-          </dl>
-        </div>
-      </div>
-    `;
-  }
-
-  if (scene.id === "verify") {
-    return `
-      <div class="story-stage story-stage-verify">
-        <div class="story-verify-panel" ${storyRevealAttr(4, "verify-panel")}>
-          <img src="${STORY_ASSETS.verifier}" alt="" ${storyRevealAttr(5, "seal-icon")} />
-          <strong ${storyRevealAttr(6, "receipt-label")}>EigenVerify checks</strong>
-          ${["Body integrity", "Artifact hash", "Signature", "App identity", "Timestamp"].map((check, index) => `
-            <div class="story-check ok" ${storyRevealAttr(index + 7, "check")}><span>PASS</span><small>${check}</small></div>
-          `).join("")}
-        </div>
-      </div>
-    `;
-  }
-
-  if (scene.id === "tamper") {
-    return `
-      <div class="story-stage story-stage-tamper">
-        <div class="story-tamper-card original" ${storyRevealAttr(4, "tamper-left")}>
-          <img src="${STORY_ASSETS.receipt}" alt="" />
-          <span>Original score</span>
-          <strong>92</strong>
-        </div>
-        <div class="story-fracture" ${storyRevealAttr(5, "fracture")}>
-          <img src="${STORY_ASSETS.tamper}" alt="" />
-          <strong>FAIL</strong>
-          <small>Hash mismatch</small>
-        </div>
-        <div class="story-tamper-card edited" ${storyRevealAttr(6, "tamper-right")}>
-          <img src="${STORY_ASSETS.receipt}" alt="" />
-          <span>Edited score</span>
-          <strong>99</strong>
-        </div>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="story-stage story-stage-live">
-      <div class="story-live-console" ${storyRevealAttr(4, "console")}>
-        <span ${storyRevealAttr(5, "console-label")}>Live console</span>
-        <strong ${storyRevealAttr(6, "console-title")}>Code Bounty Settlement</strong>
-        <ol>
-          <li ${storyRevealAttr(7, "console-step")}>Load demo case</li>
-          <li ${storyRevealAttr(8, "console-step")}>Generate signed receipt</li>
-          <li ${storyRevealAttr(9, "console-step")}>Verify receipt</li>
-          <li ${storyRevealAttr(10, "console-step")}>Tamper score and fail verification</li>
-        </ol>
-      </div>
-    </div>
-  `;
-}
-
-function nextStoryScene() {
-  if (storyState.index >= STORY_SCENES.length - 1) {
-    pauseStoryAutoplay();
-    startLiveHandoff({ source: "next" });
-    return;
-  }
-  goToStoryScene(storyState.index + 1, "forward");
-}
-
-function previousStoryScene() {
-  goToStoryScene(storyState.index - 1, "back");
-}
-
-function restartStoryMode() {
-  goToStoryScene(0, "back");
-}
-
-function toggleStoryAutoplay() {
-  if (storyState.autoplay) {
-    pauseStoryAutoplay();
-    renderStoryScene({ direction: "forward" });
-    return;
-  }
-
-  storyState.autoplay = true;
-  renderStoryScene({ direction: "forward" });
-}
-
-function pauseStoryAutoplay() {
-  storyState.autoplay = false;
-  window.clearTimeout(storyState.timer);
-}
-
-function scheduleStoryAutoplay(scene) {
-  window.clearTimeout(storyState.timer);
-  storyState.timer = window.setTimeout(() => {
-    if (!storyState.open || !storyState.autoplay) return;
-    if (storyState.index >= STORY_SCENES.length - 1) {
-      startLiveHandoff({ source: "autoplay" });
-      return;
-    }
-    storyState.index += 1;
-    renderStoryScene({ direction: "forward" });
-  }, prefersReducedMotion() ? Math.min(scene.duration, 900) : scene.duration);
-}
-
-function handleStoryKeydown(event) {
-  if (event.key === "ArrowRight") {
-    event.preventDefault();
-    nextStoryScene();
-  }
-  if (event.key === "ArrowLeft") {
-    event.preventDefault();
-    previousStoryScene();
-  }
-  if (event.key === "Escape") {
-    event.preventDefault();
-    closeStoryMode();
-  }
-}
-
-async function startLiveHandoff(options = {}) {
-  if (storyState.liveRunning) return;
-  storyState.liveRunning = true;
-  guidedRunning = true;
-  pauseStoryAutoplay();
-  renderStoryScene();
-  showLiveHandoffBanner("Preparing live console", "Loading the Code Bounty scenario before the real judge call.");
-  closeStoryMode({ silent: true });
-  currentView = "evaluate";
-  enterConsole({ push: false });
-
-  try {
-    await selectVariant("code", { push: true, loadDemo: true });
-    await setView("evaluate", { push: true });
-    await loadDemo("code", { transition: false });
-    updateGuidedStatus(options.source === "skip" ? "Skipped to live console" : "Live handoff running");
-
-    await wait(prefersReducedMotion() ? 30 : 1100);
-    showLiveHandoffBanner("Live judge running", "Calling /api/judge to create the signed DecisionArtifact.");
-    await generateReceipt({ guided: true });
-
-    await wait(prefersReducedMotion() ? 30 : 1400);
-    showLiveHandoffBanner("Signed receipt generated", "Opening verifier and calling /api/verify against the live artifact.");
-    await verifyCurrentReceipt();
-
-    await wait(prefersReducedMotion() ? 30 : 1500);
-    showLiveHandoffBanner("Tamper test running", "Editing the score after sealing to prove verification fails.");
-    await tamperCurrentReceipt({ guided: true });
-
-    showLiveHandoffBanner("Live proof complete", "Judge, signed receipt, verification, and tamper failure all ran in the real console.", "done");
-    updateGuidedStatus("Live proof complete");
-  } catch (error) {
-    showLiveHandoffBanner("Live handoff failed", error.message, "error");
-    showToast(`Guided demo failed: ${error.message}`, "error");
-    updateGuidedStatus("Failed");
-  } finally {
-    guidedRunning = false;
-    storyState.liveRunning = false;
-    clearSpotlights();
-  }
-}
-
-function resetGuidedDemo() {
-  guidedRunning = false;
-  clearSpotlights();
-  hideLiveHandoffBanner();
-  resetReceipt();
-  resetVerification();
-  loadDemo(currentVariant, { transition: false });
-  setView("evaluate", { push: true });
-  updateGuidedStatus("Reset");
-}
-
-async function spotlightField(name, status) {
-  updateGuidedStatus(status);
-  clearSpotlights();
-  const control = refs.form.elements[name];
-  const field = control?.closest(".field");
-  field?.classList.add("spotlight");
-  control?.focus({ preventScroll: false });
-  await wait(prefersReducedMotion() ? 20 : 520);
-}
-
-function clearSpotlights() {
-  document.querySelectorAll(".spotlight").forEach((element) => element.classList.remove("spotlight"));
-}
-
-function showLiveHandoffBanner(title, copy, tone = "active") {
-  refs.liveHandoffBanner.hidden = false;
-  refs.liveHandoffBanner.className = `live-handoff-banner ${tone}`;
-  refs.liveHandoffTitle.textContent = title;
-  refs.liveHandoffCopy.textContent = copy;
-}
-
-function hideLiveHandoffBanner() {
-  refs.liveHandoffBanner.hidden = true;
-  refs.liveHandoffBanner.className = "live-handoff-banner";
-}
-
-function updateGuidedStatus(status) {
-  refs.guidedStatus.textContent = status;
-}
-
-function transitionSurface(update, options = {}) {
-  const scope = options.scope ?? refs.workbench ?? refs.consoleGrid ?? refs.appShell;
-  const run = async () => {
-    if (options.instant || prefersReducedMotion() || !scope) {
-      await update();
-      return;
-    }
-
-    refs.appShell.dataset.motion = "settling";
-    await update();
-    scope.classList.remove("motion-enter");
-    scope.getBoundingClientRect();
-    scope.classList.add("motion-enter");
-    try {
-      await wait(180);
-    } finally {
-      scope.classList.remove("motion-enter");
-      delete refs.appShell.dataset.motion;
-    }
-  };
-
-  transitionChain = transitionChain.catch(() => {}).then(run);
-  return transitionChain;
-}
-
-function route(options = {}) {
-  syncEntryLayerWithRoute();
-  const match = window.location.pathname.match(/^\/agents\/(\w+)$/);
-  const variant = match && META[match[1]] ? match[1] : "code";
-  const hashView = window.location.hash.replace("#", "");
-  const view = document.querySelector(`[data-view="${hashView}"]`) ? hashView : currentView;
-
-  const update = async () => {
-    await selectVariant(variant, {
-      push: false,
-      preserveArtifact: variant === currentVariant,
-      transition: false
-    });
-    await setView(view, { push: false, transition: false });
-  };
-
-  return options.transition === false ? update() : transitionSurface(update);
-}
-
-function syncEntryLayerWithRoute() {
-  if (window.location.pathname.startsWith("/agents/")) {
-    sessionStorage.setItem("proofjudge.entry.dismissed", "true");
-    refs.entryLayer.hidden = true;
-    refs.entryLayer.classList.remove("leaving");
-    return;
-  }
-
-  if (window.location.pathname === "/") {
-    refs.entryLayer.hidden = false;
-    refs.entryLayer.classList.remove("leaving");
-  }
-}
-
-async function selectVariant(variant, options = {}) {
-  if (!META[variant]) return;
-  const changed = currentVariant !== variant;
-  currentVariant = variant;
-  updateEntryVariantSelection(variant);
-  const meta = META[variant];
-  const app = APP_REGISTRY[variant];
-  let demoData = null;
-
-  if ((options.loadDemo === true || changed) && !options.preserveArtifact) {
-    try {
-      demoData = await apiFetch(`/api/demo/${variant}`);
-    } catch (error) {
-      showToast(`Demo case failed to load: ${error.message}`, "error");
-    }
-  }
-
-  const update = () => {
-    if (currentVariant !== variant) return;
-
-    document.documentElement.style.setProperty("--accent", meta.accent);
-    document.querySelectorAll(".case-card").forEach((button) => {
-      button.classList.toggle("active", button.dataset.variant === variant);
-    });
-    document.querySelectorAll(".queue-card").forEach((card) => {
-      card.classList.toggle("active", card.dataset.demoCard === variant);
-    });
-
-    refs.caseType.textContent = meta.caseType;
-    refs.caseTitle.textContent = meta.title;
-    refs.caseCopy.textContent = meta.copy;
-    refs.labelBounty.textContent = meta.labels.bounty;
-    refs.labelRubric.textContent = meta.labels.rubric;
-    refs.labelArtifact.textContent = meta.labels.artifact;
-    refs.configuredAppId.textContent = shortAddress(app.appId);
-    refs.configuredVerifyLink.href = app.verifyUrl;
-    refs.headerVerifyLink.href = app.verifyUrl;
-    refs.railVerifyLink.href = app.verifyUrl;
-
-    renderIdentityStrip();
-    renderRegistry();
-
-    if (changed && !options.preserveArtifact) {
-      currentArtifact = null;
-      refs.form.reset();
-      resetReceipt();
-      resetVerification();
-    }
-
-    if (demoData) {
-      applyDemo(demoData);
-    }
-  };
-
-  if (options.push) {
-    history.pushState(null, "", `/agents/${variant}#${currentView}`);
-  }
-
-  return options.transition === false ? Promise.resolve(update()) : transitionSurface(update);
-}
-
-function setView(view, options = {}) {
-  if (!document.querySelector(`[data-view="${view}"]`)) return;
-  currentView = view;
-  const update = () => {
-    document.querySelectorAll("[data-view]").forEach((button) => {
-      button.classList.toggle("active", button.dataset.view === view);
-    });
-    document.querySelectorAll("[data-view-panel]").forEach((panel) => {
-      panel.classList.toggle("active", panel.dataset.viewPanel === view);
-    });
-  };
-
-  if (options.push) {
-    history.replaceState(null, "", `/agents/${currentVariant}#${view}`);
-    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
-  }
-
-  return options.transition === false ? Promise.resolve(update()) : transitionSurface(update);
-}
-
-async function loadDemo(variant, options = {}) {
-  try {
-    const data = await apiFetch(`/api/demo/${variant}`);
-    return transitionSurface(() => applyDemo(data), { instant: options.transition === false });
-  } catch (error) {
-    showToast(`Demo case failed to load: ${error.message}`, "error");
-  }
-}
-
-function applyDemo(data) {
-  refs.form.elements.bountyDescription.value = data.bountyDescription ?? "";
-  refs.form.elements.rubric.value = data.rubric ?? "";
-  refs.form.elements.submittedArtifact.value = data.submittedArtifact ?? "";
-  refs.form.elements.submitter.value = data.submitter ?? "";
-}
-
-async function pingRuntime() {
-  try {
-    const health = await apiFetch("/healthz");
-    refs.runtimePill.textContent = health.ok ? "Runtime online" : "Runtime status unknown";
-  } catch {
-    refs.runtimePill.textContent = "Runtime offline";
-  }
-}
-
-function setLoading(on) {
-  refs.submitBtn.disabled = on;
-  refs.submitBtn.classList.toggle("loading", on);
-  refs.submitLabel.textContent = on ? "Sealing Receipt" : "Generate Signed Verdict";
+function setJudging(on) {
+  refs.judgeBtn.disabled = on;
+  refs.judgeBtn.classList.toggle("loading", on);
+  refs.judgeBtnLabel.textContent = on ? "Judging" : "Judge this work";
 }
 
 async function runPipeline() {
-  const delay = prefersReducedMotion() ? 20 : 180;
   resetPipeline();
-  for (let index = 0; index < PIPELINE_STEPS.length; index += 1) {
-    setPipelineState(index, "active");
-    await wait(delay);
-    setPipelineState(index, "done");
+  const stepMs = prefersReducedMotion() ? 10 : PIPELINE_MIN_MS / 5;
+  const steps = refs.pipeline.querySelectorAll(".pipe-step");
+  for (const step of steps) {
+    step.classList.add("active");
+    await wait(stepMs);
+    step.classList.remove("active");
+    step.classList.add("done");
   }
 }
 
 function resetPipeline() {
-  refs.proofStepper.querySelectorAll(".proof-step").forEach((step) => {
-    step.classList.remove("active", "done");
-  });
+  refs.pipeline.querySelectorAll(".pipe-step").forEach((s) => s.classList.remove("active", "done"));
 }
 
-function setPipelineState(index, state) {
-  const step = refs.proofStepper.querySelector(`[data-step="${index}"]`);
-  if (!step) return;
-  step.classList.remove("active", "done");
-  step.classList.add(state);
-}
+/* ────────────────────────────── receipt ───────────────────────────────── */
 
-function renderArtifact(artifact, options = {}) {
+function renderReceipt(artifact, options = {}) {
   currentArtifact = artifact;
+  tamperedView = false;
+  const app = APP_REGISTRY[artifact.agent?.variant] ?? APP_REGISTRY[currentJudge];
+  const appId = artifact.deploymentIdentity?.appId || app.appId;
   const settlement = artifact.settlementRecommendation;
-  const settlementLabel = SETTLEMENT_LABELS[settlement.action] ?? settlement.action;
-  const appId = artifact.deploymentIdentity?.appId || APP_REGISTRY[currentVariant].appId;
-  const verifyUrl = eigenVerifyUrl(appId, currentVariant);
 
-  refs.receiptState.textContent = "Sealed";
-  refs.receiptState.className = "sealed";
-  refs.appShell.dataset.receipt = "sealed";
-  refs.receiptRail.dataset.state = "sealed";
-  refs.receiptSettlement.className = `receipt-settlement ${artifact.decision}`;
-  refs.receiptSettlement.innerHTML = `
-    <span>Settlement Action</span>
-    <strong>${esc(settlementLabel)}</strong>
-    <small>${esc(settlement.note)}</small>
-  `;
-  refs.receiptDecision.textContent = artifact.decision.toUpperCase();
-  refs.receiptDecision.className = `decision-text ${artifact.decision}`;
-  refs.receiptScore.textContent = `${artifact.score} / 100 (${artifact.confidence}% confidence)`;
-  refs.receiptModel.textContent = `${artifact.modelMetadata.mode} / ${artifact.modelMetadata.provider}`;
-  refs.receiptAppId.textContent = shortAddress(appId);
+  refs.receipt.hidden = false;
+  refs.receiptBanner.hidden = true;
+  refs.receiptJudge.textContent = `${artifact.agent?.name ?? "Decision"} · receipt`;
+  refs.receiptVerdictBlock.className = `paper-verdict ${artifact.decision}`;
+  refs.receiptVerdict.textContent = VERDICT_LABELS[artifact.decision] ?? artifact.decision.toUpperCase();
+  refs.receiptAction.textContent = SETTLEMENT_LABELS[settlement.action] ?? settlement.action;
+  refs.receiptActionNote.textContent = settlement.note;
+  refs.receiptCase.textContent = `${artifact.taskId}`;
+  if (options.animate && !prefersReducedMotion()) {
+    refs.receiptScore.textContent = `0 / 100 · ${artifact.confidence}% confidence`;
+    window.setTimeout(() => countUp(refs.receiptScore, artifact.score, ` / 100 · ${artifact.confidence}% confidence`), 350);
+  } else {
+    refs.receiptScore.textContent = `${artifact.score} / 100 · ${artifact.confidence}% confidence`;
+  }
+  refs.receiptSubmitter.textContent = artifact.submitter || "anonymous";
+  refs.receiptTime.textContent = formatTime(artifact.timestamp);
   refs.receiptInputHash.textContent = shortHash(artifact.submittedArtifactHash);
   refs.receiptArtifactHash.textContent = shortHash(artifact.decisionArtifactHash);
-  refs.receiptSignature.textContent = `${artifact.signature.algorithm} ${shortHash(artifact.signature.value)}`;
-  refs.railVerifyBtn.disabled = false;
-  refs.railVerifyLink.href = verifyUrl;
-  refs.verifyCurrentBtn.disabled = false;
+  refs.receiptSignature.textContent = `${artifact.signature.algorithm} · ${shortHash(artifact.signature.value)}`;
+  refs.receiptAppId.textContent = shortAddress(appId);
+  refs.receiptModel.textContent = `${artifact.modelMetadata.mode} · ${artifact.modelMetadata.model}`;
+  refs.receiptAttestation.textContent = artifact.deploymentIdentity?.attestation?.mode ?? "—";
+  refs.receiptScoreRow().classList.remove("broken");
+
+  refs.attestationMode.textContent = artifact.deploymentIdentity?.attestation?.mode ?? "—";
+  refs.railVerifyLink.href = eigenVerifyUrl(appId, currentJudge);
+
+  refs.verifyBtn.disabled = false;
   refs.tamperBtn.disabled = false;
+  refs.tamperBtn.textContent = "Tamper test";
   refs.copyJsonBtn.disabled = false;
 
-  refs.settlementGate.className = `settlement-gate ${artifact.decision}`;
-  refs.settlementGate.innerHTML = `
-    <span class="gate-label">Decision Receipt</span>
-    <strong>Verdict sealed</strong>
-    <small>Settlement: ${esc(settlementLabel)}. ${esc(settlement.note)}</small>
-    <div class="gate-checks">
-      <span>Hash match</span>
-      <span>Signature valid</span>
-      <span>Judge identity confirmed</span>
-    </div>
-  `;
+  refs.deskSlot.dataset.state = options.animate ? "sealing" : "sealed";
+  if (options.animate && !prefersReducedMotion()) {
+    window.setTimeout(() => {
+      if (refs.deskSlot.dataset.state === "sealing") refs.deskSlot.dataset.state = "sealed";
+    }, 950);
+  } else {
+    refs.deskSlot.dataset.state = "sealed";
+  }
 
-  refs.evidenceCount.textContent = `${artifact.evidenceChecked.length} checks`;
-  refs.evidenceGrid.innerHTML = artifact.evidenceChecked.map((item, index) => `
-    <div class="evidence-row" style="--row-delay:${index * 35}ms">
-      <span>${String(index + 1).padStart(2, "0")}</span>
-      <strong>${esc(normalizeEvidenceLabel(item))}</strong>
-      <small>Checked</small>
-    </div>
-  `).join("");
-
-  refs.reasoningList.innerHTML = artifact.reasoning.map((item) => `<li>${esc(item)}</li>`).join("");
+  renderFindings(artifact);
   refs.artifactPre.textContent = JSON.stringify(artifact, null, 2);
-  refs.verifyJson.value = JSON.stringify(artifact, null, 2);
-  refs.tamperDiff.hidden = true;
-  renderIdentityStrip(artifact);
+
+  /* on stacked layouts the desk sits below the findings — bring the moment on screen */
+  if (options.animate && window.matchMedia("(max-width: 880px)").matches) {
+    refs.deskSlot.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "center" });
+  }
 
   if (options.save) {
     saveArchive(artifact);
+    showToast("Receipt sealed and signed.");
   }
   renderArchive();
+  if (stationOpen) renderStation();
 }
+
+refs.receiptScoreRow = () => refs.receipt.querySelector('[data-row="score"]');
 
 function resetReceipt() {
   currentArtifact = null;
-  refs.appShell.dataset.receipt = "pending";
-  refs.receiptRail.dataset.state = "pending";
-  refs.receiptState.textContent = "Pending";
-  refs.receiptState.className = "";
-  refs.receiptSettlement.className = "receipt-settlement";
-  refs.receiptSettlement.innerHTML = `
-    <span>Settlement Action</span>
-    <strong>Awaiting verdict</strong>
-    <small>No receipt generated.</small>
-  `;
-  refs.receiptDecision.textContent = "-";
-  refs.receiptDecision.className = "";
-  refs.receiptScore.textContent = "-";
-  refs.receiptModel.textContent = "-";
-  refs.receiptAppId.textContent = "-";
-  refs.receiptInputHash.textContent = "-";
-  refs.receiptArtifactHash.textContent = "-";
-  refs.receiptSignature.textContent = "-";
-  refs.railVerifyBtn.disabled = true;
-  refs.verifyCurrentBtn.disabled = true;
+  tamperedView = false;
+  refs.deskSlot.dataset.state = "pending";
+  refs.receipt.hidden = true;
+  refs.receiptBanner.hidden = true;
+  refs.verifyBtn.disabled = true;
   refs.tamperBtn.disabled = true;
+  refs.tamperBtn.textContent = "Tamper test";
   refs.copyJsonBtn.disabled = true;
   refs.artifactPre.textContent = "{}";
-  refs.verifyJson.value = "";
-  refs.evidenceCount.textContent = "No receipt yet";
-  refs.evidenceGrid.innerHTML = `<div class="empty-state">Evidence rows appear after the judge evaluates task terms, rubric, and submitted work.</div>`;
-  refs.reasoningList.innerHTML = "<li>Generate a verdict to inspect the signed reasoning trace.</li>";
-  refs.settlementGate.className = "settlement-gate";
-  refs.settlementGate.innerHTML = `
-    <span class="gate-label">Decision Receipt</span>
-    <strong>Awaiting verdict</strong>
-    <small>Input hash, evidence check, signature, and settlement action are pending.</small>
-    <div class="gate-checks pending">
-      <span>Input hash pending</span>
-      <span>Evidence review pending</span>
-      <span>Signature pending</span>
-    </div>
-  `;
+  refs.attestationMode.textContent = "awaiting receipt";
+  clearVerifyReadout();
   resetPipeline();
+  renderFindings(null);
 }
 
-async function verifyCurrentReceipt() {
-  if (!currentArtifact) return;
-  await verifyArtifact(currentArtifact, { source: "current" });
-  await setView("verify", { push: true });
+const META_EVIDENCE = new Set(["bounty description", "acceptance rubric", "submitted artifact hash", "submitted artifact"]);
+
+function renderFindings(artifact) {
+  if (!artifact) {
+    refs.findings.innerHTML = `
+      <p class="empty-note findings-empty">
+        The judge shows its work. After judgment, every checked signal and the full reasoning trace
+        land here — and both are signed into the receipt.
+      </p>`;
+    return;
+  }
+
+  const chips = artifact.evidenceChecked
+    .map((item, index) => {
+      const risk = /^risk signal/i.test(item);
+      const label = item.replace(/^positive signal:\s*/i, "").replace(/^risk signal:\s*/i, "");
+      const meta = META_EVIDENCE.has(label.toLowerCase());
+      return `<span class="signal-chip ${risk ? "risk" : meta ? "meta" : ""}" style="--row-delay:${Math.min(index * 35, 540)}ms">${esc(label)}</span>`;
+    })
+    .join("");
+
+  const reasoning = artifact.reasoning
+    .map((item, index) => `<li style="--row-delay:${index * 90}ms">${esc(item)}</li>`)
+    .join("");
+
+  refs.findings.innerHTML = `
+    <section class="finding-block">
+      <header><h3>Evidence matrix</h3><small>${artifact.evidenceChecked.length} signals checked · signed into the receipt</small></header>
+      <div class="signal-cloud">${chips}</div>
+    </section>
+    <section class="finding-block">
+      <header><h3>Reasoning trace</h3><small>signed into the receipt</small></header>
+      <ol class="reasoning-list">${reasoning}</ol>
+    </section>`;
 }
 
-async function verifyArtifact(artifact, options = {}) {
-  refs.verificationChecklist.innerHTML = `<div class="empty-state">Checking receipt...</div>`;
+/* ────────────────────────────── verification ──────────────────────────── */
+
+async function verifyArtifact(artifact) {
   const data = await apiFetch("/api/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ artifact })
   });
-  renderVerification(data.verification, artifact);
-  if (options.source === "current") {
-    showToast(data.verification.ok ? "Receipt verified." : "Receipt failed verification.", data.verification.ok ? "ok" : "error");
-  }
   return data.verification;
 }
 
-function renderVerification(verification, artifact) {
-  const timestampOk = Boolean(artifact?.timestamp && !Number.isNaN(Date.parse(artifact.timestamp)));
-  const rows = [
-    ...verification.checks,
-    {
-      label: "Timestamp",
-      ok: timestampOk,
-      detail: timestampOk ? `Present: ${artifact.timestamp}` : "Timestamp is missing or invalid."
-    }
-  ];
-  refs.verificationChecklist.innerHTML = `
-    <div class="verification-summary ${verification.ok ? "ok" : "fail"}">
-      <strong>${verification.ok ? "Verified" : "Verification failed"}</strong>
-      <span>${esc(verification.message)}</span>
-    </div>
-    ${rows.map((check, index) => {
-      const state = verificationRowState(check);
-      return `
-      <div class="verify-row ${state}" style="--row-delay:${index * 45}ms">
-        <span>${state === "ok" ? "PASS" : state === "warn" ? "WARN" : "FAIL"}</span>
-        <strong>${esc(check.label)}</strong>
-        <small>${esc(check.detail)}</small>
-      </div>
-    `;
-    }).join("")}
-  `;
-}
-
-function verificationRowState(check) {
-  if (check.ok) return "ok";
-  return check.label === "Attestation status" ? "warn" : "fail";
+async function verifyCurrentReceipt() {
+  if (!currentArtifact) return null;
+  refs.verifyReadout.innerHTML = `<p class="empty-note">Checking the receipt against the live verifier…</p>`;
+  const verification = await verifyArtifact(currentArtifact);
+  renderVerifyReadout(refs.verifyReadout, verification, currentArtifact);
+  refs.deskSlot.dataset.state = verification.ok ? "verified" : "tampered";
+  showReceiptBanner(verification.ok ? "VERIFIED" : "VERIFICATION FAILED", verification.ok);
+  revealReadout();
+  return verification;
 }
 
 async function tamperCurrentReceipt() {
-  if (!currentArtifact) return;
+  if (!currentArtifact) return null;
+
+  if (tamperedView) {
+    /* restore: put the untouched original back on the desk and re-verify it */
+    tamperedView = false;
+    refs.tamperBtn.textContent = "Tamper test";
+    refs.receiptScoreRow().classList.remove("broken");
+    refs.receiptScore.textContent = `${currentArtifact.score} / 100 · ${currentArtifact.confidence}% confidence`;
+    refs.receiptBanner.hidden = true;
+    refs.deskSlot.dataset.state = "sealed";
+    clearVerifyReadout();
+    showToast("Original receipt restored. It still verifies.");
+    return null;
+  }
+
   const tampered = JSON.parse(JSON.stringify(currentArtifact));
   const originalScore = tampered.score;
-  tampered.score = originalScore < 100 ? originalScore + 1 : 0;
+  tampered.score = originalScore < 100 ? originalScore + 1 : originalScore - 1;
 
-  try {
-    const data = await apiFetch("/api/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ artifact: tampered })
+  const verification = await verifyArtifact(tampered);
+
+  tamperedView = true;
+  refs.receiptScore.textContent = `${tampered.score} / 100 · ${tampered.confidence}% confidence`;
+  refs.receiptScoreRow().classList.add("broken");
+  refs.deskSlot.dataset.state = "tampered";
+  showReceiptBanner("VERIFICATION FAILED", false);
+  refs.tamperBtn.textContent = "Restore original";
+
+  renderVerifyReadout(refs.verifyReadout, verification, tampered, {
+    compare: { originalScore, tamperedScore: tampered.score, embedded: currentArtifact.decisionArtifactHash, recomputed: verification.recomputedDecisionArtifactHash }
+  });
+  revealReadout();
+  showToast("One field changed. The receipt no longer verifies.", "error");
+  return verification;
+}
+
+function showReceiptBanner(text, ok) {
+  refs.receiptBanner.hidden = false;
+  refs.receiptBanner.textContent = text;
+  refs.receiptBanner.className = `receipt-banner ${ok ? "ok" : ""}`;
+}
+
+function renderVerifyReadout(target, verification, artifact, options = {}) {
+  const timestampOk = Boolean(artifact?.timestamp && !Number.isNaN(Date.parse(artifact.timestamp)));
+  const rows = [
+    ...verification.checks,
+    { label: "Timestamp", ok: timestampOk, detail: timestampOk ? `Present: ${formatTime(artifact.timestamp)}` : "Timestamp missing or invalid." }
+  ];
+
+  const compare = options.compare
+    ? `
+      <div class="tamper-compare">
+        <div><span>Original score</span><strong>${options.compare.originalScore} / 100</strong></div>
+        <div><span>Edited score</span><strong class="bad">${options.compare.tamperedScore} / 100</strong></div>
+        <div><span>Embedded hash</span><strong>${shortHash(options.compare.embedded)}</strong></div>
+        <div><span>Recomputed hash</span><strong class="bad">${shortHash(options.compare.recomputed)}</strong></div>
+      </div>`
+    : "";
+
+  target.innerHTML = `
+    <div class="verify-summary ${verification.ok ? "ok" : "fail"}">
+      <strong>${verification.ok ? "Receipt verified" : "Verification failed"}</strong>
+      <span>${esc(verification.message)}</span>
+    </div>
+    ${compare}
+    ${rows
+      .map((check, index) => {
+        const state = check.ok ? "ok" : check.label === "Attestation status" ? "warn" : "fail";
+        const word = state === "ok" ? "PASS" : state === "warn" ? "INFO" : "FAIL";
+        return `
+        <div class="verify-row ${state}" style="--row-delay:${index * 70}ms">
+          <span class="vr-state">${word}</span>
+          <b>${esc(check.label)}</b>
+          <small>${esc(check.detail)}</small>
+        </div>`;
+      })
+      .join("")}
+  `;
+}
+
+function revealReadout() {
+  /* the readout sits below the receipt inside the desk column — make sure
+     the summary row is on screen without yanking the receipt away */
+  window.setTimeout(() => {
+    refs.verifyReadout.firstElementChild?.scrollIntoView({
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+      block: "nearest"
     });
-    renderVerification(data.verification, tampered);
-    renderTamperDiff(currentArtifact, tampered, data.verification);
-    showToast("Tamper detected. Receipt no longer verifies.", "error");
-    await setView("verify", { push: true });
-    return data.verification;
-  } catch (error) {
-    refs.tamperDiff.hidden = false;
-    refs.tamperDiff.innerHTML = failRow("Tamper test", error.message);
-    throw error;
-  }
+  }, 150);
 }
 
-function renderTamperDiff(original, tampered, verification) {
-  const hashCheck = verification.checks.find((check) => check.label === "Decision artifact hash");
-  const signatureCheck = verification.checks.find((check) => check.label === "Signature");
-  refs.tamperDiff.hidden = false;
-  refs.tamperDiff.innerHTML = `
-    <div class="section-title">
-      <span>Tamper Detected</span>
-      <small>Score changed after sealing</small>
-    </div>
-    <div class="diff-grid">
-      <div>
-        <span>Original score</span>
-        <strong>${original.score} / 100</strong>
-      </div>
-      <div>
-        <span>Tampered score</span>
-        <strong>${tampered.score} / 100</strong>
-      </div>
-      <div>
-        <span>Embedded hash</span>
-        <strong>${shortHash(original.decisionArtifactHash)}</strong>
-      </div>
-      <div>
-        <span>Recomputed hash</span>
-        <strong>${shortHash(verification.recomputedDecisionArtifactHash)}</strong>
-      </div>
-      <div>
-        <span>Hash check</span>
-        <strong>${hashCheck?.ok ? "MATCH" : "MISMATCH"}</strong>
-      </div>
-      <div>
-        <span>Signature</span>
-        <strong>${signatureCheck?.ok ? "VALID" : "INVALID"}</strong>
-      </div>
-    </div>
-  `;
+function clearVerifyReadout() {
+  refs.verifyReadout.innerHTML = "";
+  refs.pasteReadout.innerHTML = "";
 }
 
-function resetVerification() {
-  refs.verificationChecklist.innerHTML = `<div class="empty-state">Verification checks appear here.</div>`;
-  refs.tamperDiff.hidden = true;
-  refs.tamperDiff.innerHTML = "";
-}
-
-function renderIdentityStrip(artifact = currentArtifact) {
-  const app = APP_REGISTRY[currentVariant];
-  const runtimeAppId = artifact?.deploymentIdentity?.appId;
-  const attestation = artifact?.deploymentIdentity?.attestation?.mode || "not-yet-generated";
-  refs.identityStrip.innerHTML = `
-    <div>
-      <span>Runtime</span>
-      <strong>EigenCompute Mainnet Alpha</strong>
-    </div>
-    <div>
-      <span>Configured App ID</span>
-      <strong>${shortAddress(app.appId)}</strong>
-    </div>
-    <div>
-      <span>Receipt Signer</span>
-      <strong>${runtimeAppId ? shortAddress(runtimeAppId) : "Awaiting receipt"}</strong>
-    </div>
-    <div>
-      <span>Attestation Mode</span>
-      <strong>${attestation}</strong>
-    </div>
-  `;
-}
-
-function renderRegistry() {
-  refs.registryGrid.innerHTML = Object.entries(APP_REGISTRY).map(([variant, app]) => `
-    <article class="registry-card ${variant === currentVariant ? "active" : ""}">
-      <span>${esc(app.label)}</span>
-      <strong>${shortAddress(app.appId)}</strong>
-      <small>${esc(app.ip)}</small>
-      <a href="${app.verifyUrl}" target="_blank" rel="noopener">Open EigenVerify</a>
-    </article>
-  `).join("");
-}
-
-function renderArchive() {
-  const archive = readArchive();
-  if (archive.length === 0) {
-    refs.archiveTable.innerHTML = `<div class="empty-state">No receipts generated in this browser yet.</div>`;
-    return;
-  }
-  refs.archiveTable.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Case</th>
-          <th>Decision</th>
-          <th>Settlement</th>
-          <th>Hash</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        ${archive.map((record, index) => {
-          const artifact = record.artifact;
-          const action = SETTLEMENT_LABELS[artifact.settlementRecommendation.action] ?? artifact.settlementRecommendation.action;
-          return `
-            <tr>
-              <td>${esc(formatTime(artifact.timestamp))}</td>
-              <td>${esc(APP_REGISTRY[artifact.agent.variant]?.label ?? artifact.agent.variant)}</td>
-              <td><span class="table-decision ${artifact.decision}">${artifact.decision}</span></td>
-              <td>${esc(action)}</td>
-              <td>${shortHash(artifact.decisionArtifactHash)}</td>
-              <td><button class="quiet-button" type="button" data-load-receipt="${index}">Load</button></td>
-            </tr>
-          `;
-        }).join("")}
-      </tbody>
-    </table>
-  `;
-}
+/* ────────────────────────────── ledger ────────────────────────────────── */
 
 function saveArchive(artifact) {
-  const archive = readArchive().filter((record) => record.artifact.taskId !== artifact.taskId);
+  const archive = readArchive().filter((r) => r.artifact.taskId !== artifact.taskId);
   archive.unshift({ artifact });
-  localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive.slice(0, 12)));
+  localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive.slice(0, 14)));
 }
 
 function readArchive() {
@@ -1488,14 +887,1041 @@ function readArchive() {
   }
 }
 
-function normalizeEvidenceLabel(item) {
-  return item.replace(/^positive signal:\s*/i, "").replace(/^risk signal:\s*/i, "Risk signal: ");
+function renderArchive() {
+  const archive = readArchive();
+  refs.ledgerCount.hidden = archive.length === 0;
+  refs.ledgerCount.textContent = String(archive.length);
+
+  if (archive.length === 0) {
+    refs.archiveTable.innerHTML = `<p class="empty-note">No receipts yet. Judge a case on the Bench and the sealed record lands here.</p>`;
+    return;
+  }
+
+  refs.archiveTable.innerHTML = `
+    <table>
+      <thead><tr><th>Sealed</th><th>Judge</th><th>Verdict</th><th>Settlement</th><th>Artifact hash</th><th></th></tr></thead>
+      <tbody>
+        ${archive
+          .map((record, index) => {
+            const a = record.artifact;
+            return `
+            <tr>
+              <td>${esc(formatTime(a.timestamp))}</td>
+              <td>${esc(APP_REGISTRY[a.agent.variant]?.label ?? a.agent.variant)}</td>
+              <td><span class="table-verdict ${a.decision}">${VERDICT_LABELS[a.decision] ?? a.decision}</span></td>
+              <td>${esc(SETTLEMENT_LABELS[a.settlementRecommendation.action] ?? a.settlementRecommendation.action)}</td>
+              <td class="mono">${shortHash(a.decisionArtifactHash)}</td>
+              <td><button class="btn btn-quiet btn-compact" type="button" data-load-receipt="${index}">Load</button></td>
+            </tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>
+  `;
 }
 
-function eigenVerifyUrl(appId, variant) {
-  if (appId && appId.startsWith("0x")) return `https://verify.eigencloud.xyz/app/${appId}`;
-  return APP_REGISTRY[variant].verifyUrl;
+/* ────────────────────────────── registry ──────────────────────────────── */
+
+function renderRegistry() {
+  refs.registryGrid.innerHTML = Object.entries(APP_REGISTRY)
+    .map(
+      ([judge, app]) => `
+      <article class="registry-card ${judge === currentJudge ? "active" : ""}" data-judge="${judge}">
+        <span class="reg-name"><i></i>${esc(app.label)}</span>
+        <span class="reg-id">${shortAddress(app.appId)}</span>
+        <span class="reg-ip">${esc(app.ip)}</span>
+        <a href="${app.verifyUrl}" target="_blank" rel="noopener">Inspect on EigenVerify ↗</a>
+      </article>`
+    )
+    .join("");
 }
+
+/* ────────────────────────────── station ───────────────────────────────── */
+
+function renderStation() {
+  const archive = readArchive();
+
+  /* stats strip */
+  const runtimeStat = runtimeOnline === null
+    ? `<span><b>Runtime</b> checking…</span>`
+    : runtimeOnline
+      ? `<span class="stat-ok"><b>Runtime online</b></span>`
+      : `<span><b>Runtime offline</b></span>`;
+  refs.stationStats.innerHTML = `
+    <span><b>4</b> deployed judges</span>
+    ${runtimeStat}
+    <span><b>${archive.length}</b> receipt${archive.length === 1 ? "" : "s"} sealed here</span>
+    <span><b>HMAC-SHA256</b> signing</span>
+  `;
+
+  /* cartridge cards */
+  refs.stationGrid.innerHTML = Object.entries(APP_REGISTRY)
+    .map(([judge, app]) => {
+      const live = variantConfigs[judge];
+      const meta = STATION_META[judge];
+      const tagline = live?.tagline ?? meta.tagline;
+      const lastRecord = archive.find((r) => r.artifact.agent.variant === judge);
+      const lastVerdict = lastRecord
+        ? `<span class="table-verdict ${lastRecord.artifact.decision}">${VERDICT_LABELS[lastRecord.artifact.decision]}</span>`
+        : "none yet";
+      return `
+      <button type="button" class="judge-cartridge" data-station-judge="${judge}">
+        <span class="jc-head">
+          <span class="jc-icon">${esc(meta.icon)}</span>
+          <span><strong>${esc(app.label)}</strong><small>${esc(tagline)}</small></span>
+        </span>
+        <p class="jc-problem">${esc(live?.problemStatement ?? meta.problem)}</p>
+        <dl class="jc-rows">
+          <div><dt>App ID</dt><dd>${shortAddress(app.appId)}</dd></div>
+          <div><dt>Docket</dt><dd>${CASE_LIBRARY[judge].length} case files</dd></div>
+          <div><dt>Last verdict</dt><dd>${lastVerdict}</dd></div>
+        </dl>
+        <span class="jc-foot">
+          <span class="jc-enter">Enter chamber →</span>
+          <a class="jc-verify" href="${app.verifyUrl}" target="_blank" rel="noopener">EigenVerify ↗</a>
+        </span>
+      </button>`;
+    })
+    .join("");
+
+  /* recent receipts — real, from this browser */
+  if (archive.length === 0) {
+    refs.stationRecentRows.innerHTML = `
+      <p class="empty-note">Nothing sealed yet. Run the proof, or dock into a chamber and judge a case —
+      real receipts land here.</p>`;
+    return;
+  }
+  refs.stationRecentRows.innerHTML = archive
+    .slice(0, 5)
+    .map((record, index) => {
+      const a = record.artifact;
+      return `
+      <button type="button" class="recent-row" data-recent-receipt="${index}">
+        <span class="rr-time">${esc(formatTime(a.timestamp))}</span>
+        <span class="rr-judge">${esc(APP_REGISTRY[a.agent.variant]?.label ?? a.agent.variant)}</span>
+        <span class="table-verdict ${a.decision}">${VERDICT_LABELS[a.decision] ?? a.decision}</span>
+        <span>${esc(SETTLEMENT_LABELS[a.settlementRecommendation.action] ?? a.settlementRecommendation.action)}</span>
+        <span class="rr-hash">${shortHash(a.decisionArtifactHash)}</span>
+        <span class="rr-open">load on desk →</span>
+      </button>`;
+    })
+    .join("");
+}
+
+/* ────────────────────────────── ticker ────────────────────────────────── */
+
+/* JS-driven marquee: hover eases to a halt, leave eases back up.
+   The loop cancels itself when fully stopped and when the tab is hidden. */
+const ticker = {
+  raf: 0,
+  x: 0,
+  speed: 0,
+  target: 0,
+  base: -80, // px per second — comfortable reading pace
+  last: 0,
+  half: 1
+};
+
+function startTicker() {
+  if (prefersReducedMotion()) return;
+  ticker.half = refs.tickerTrack.scrollWidth / 2 || 1;
+  ticker.target = ticker.base;
+  if (!ticker.raf) {
+    ticker.speed = ticker.base; // snap to full speed on cold start — no lerp ramp-up
+    ticker.last = performance.now();
+    ticker.raf = window.requestAnimationFrame(tickTicker);
+  }
+}
+
+function stopTicker() {
+  ticker.target = 0;
+  ticker.speed = 0;
+  if (ticker.raf) {
+    window.cancelAnimationFrame(ticker.raf);
+    ticker.raf = 0;
+  }
+}
+
+function tickTicker(now) {
+  ticker.raf = window.requestAnimationFrame(tickTicker);
+  const dt = Math.min((now - ticker.last) / 1000, 0.05);
+  ticker.last = now;
+
+  ticker.speed += (ticker.target - ticker.speed) * Math.min(1, dt * 5);
+  if (ticker.target === 0 && Math.abs(ticker.speed) < 0.4) {
+    window.cancelAnimationFrame(ticker.raf);
+    ticker.raf = 0;
+    return;
+  }
+
+  ticker.x = (ticker.x + ticker.speed * dt) % ticker.half;
+  refs.tickerTrack.style.transform = `translateX(${ticker.x.toFixed(2)}px)`;
+}
+
+function renderTicker() {
+  const items = buildTickerFeed();
+  const markup = items
+    .map(
+      (item) => `
+      <span class="tick" data-verdict="${item.verdict}">
+        <i></i>
+        <span class="tick-verdict">${item.verdict.toUpperCase()}</span>
+        <b>${esc(item.subject)}</b>
+        <span>${esc(APP_REGISTRY[item.variant]?.label ?? item.variant)}</span>
+        <span class="mono">${esc(item.hash)}</span>
+        <small>${item.secondsAgo}s ago · ${esc(item.action)}</small>
+      </span>`
+    )
+    .join("");
+  /* duplicated track = seamless loop */
+  refs.tickerTrack.innerHTML = markup + markup;
+  ticker.half = refs.tickerTrack.scrollWidth / 2 || 1;
+}
+
+/* ────────────────────────────── stage ─────────────────────────────────── */
+/* The proof, presented: seven acts on a clean stage. User-stepped by
+   default; autoplay is an explicit mode (and the video capture mode).
+   Every judgment and verification on stage is a real API call. */
+
+const stage = {
+  open: false,
+  act: 0,
+  maxAct: 0, /* furthest act reached — the rail lets you revisit anything ≤ this */
+  auto: false,
+  token: 0,
+  busy: false,
+  artifact: null,
+  verification: null,
+  tampered: null,
+  printed: false, /* the receipt prints once; revisits find it already sealed */
+  caseFile: null,
+  returnTo: "station",
+  timer: 0
+};
+
+const STAGE_ACTS = [
+  {
+    id: "question",
+    kicker: "the question",
+    sub: "Everything you are about to see runs live — a real judge, real signatures.",
+    nextLabel: "Begin →",
+    autoMs: 4600
+  },
+  {
+    id: "case",
+    kicker: "the case file",
+    line: "A case file hits the desk.",
+    sub: "What was promised, what “done” means, and what actually arrived — captured together, ready to hash.",
+    nextLabel: "Send to the judge →",
+    autoMs: 6400
+  },
+  {
+    id: "judgment",
+    kicker: "the judgment",
+    line: "The judge runs inside EigenCompute.",
+    sub: "Scored inside attested TEE compute, under an app identity anyone can inspect — then sealed and signed.",
+    nextLabel: "Print the receipt →",
+    autoMs: 1600
+  },
+  {
+    id: "receipt",
+    kicker: "the receipt",
+    line: "The verdict prints as a signed receipt.",
+    sub: "Verdict, settlement action, hashes, judge identity — locked under an HMAC-SHA256 signature.",
+    nextLabel: "Verify it →",
+    autoMs: 5600
+  },
+  {
+    id: "verify",
+    kicker: "the proof",
+    line: "Anyone can re-verify it.",
+    sub: "Six checks against the live judge: schema, hashes, signature, deployment identity, attestation, timestamp.",
+    nextLabel: "Now try to break it →",
+    autoMs: 5200
+  },
+  {
+    id: "tamper",
+    kicker: "the tamper test",
+    line: "Your turn — change the score.",
+    sub: "Click the score on the receipt. One point is enough.",
+    nextLabel: "Tamper →",
+    autoMs: 3000
+  },
+  {
+    id: "close",
+    kicker: "the point",
+    sub: "",
+    nextLabel: "Open the console →",
+    autoMs: 0
+  }
+];
+
+function startStage() {
+  stage.token += 1;
+  stage.open = true;
+  stage.auto = false;
+  stage.busy = false;
+  stage.artifact = null;
+  stage.verification = null;
+  stage.tampered = null;
+  stage.printed = false;
+  stage.maxAct = 0;
+  stage.returnTo = document.body.classList.contains("entry-open")
+    ? "entry"
+    : stationOpen ? "station" : "chamber";
+  stage.caseFile = CASE_LIBRARY[currentJudge][0];
+
+  /* keep the chamber in sync so exiting lands on a coherent desk */
+  hideEntry({ instant: true });
+  closeDrawer();
+  if (!stationOpen) loadCase(stage.caseFile);
+
+  refs.stageAuto.setAttribute("aria-pressed", "false");
+  window.clearTimeout(stopStage.closeTimer);
+  refs.stage.classList.remove("closing");
+  refs.stage.hidden = false;
+  document.body.classList.add("stage-active");
+  goToAct(0);
+}
+
+function stopStage(options = {}) {
+  if (!stage.open) return;
+  stage.token += 1;
+  stage.open = false;
+  stage.auto = false;
+  window.clearTimeout(stage.timer);
+  hideStageCursor();
+  refs.stageCursor.hidden = true;
+
+  /* the sealed receipt waits on the judge's desk either way */
+  if (stage.artifact) {
+    loadCase.suppressDelivery = true;
+    loadCase(stage.caseFile, { resetReceipt: false });
+    loadCase.suppressDelivery = false;
+    renderReceipt(stage.artifact, { animate: false, save: false });
+  }
+
+  /* set the destination first, then lift the curtain off it */
+  document.body.classList.remove("stage-active");
+  const arrive = !prefersReducedMotion();
+  if (options.toStation) {
+    showStation({ push: true, arrive });
+  } else if (stage.returnTo === "entry" && !stage.artifact) {
+    history.pushState(null, "", "/");
+    showEntry();
+  } else if (stage.returnTo === "chamber") {
+    showChamber(currentJudge, { push: false });
+  } else {
+    showStation({ push: stage.returnTo === "entry", arrive });
+  }
+
+  if (prefersReducedMotion()) {
+    refs.stage.hidden = true;
+    return;
+  }
+  refs.stage.classList.add("closing");
+  window.clearTimeout(stopStage.closeTimer);
+  stopStage.closeTimer = window.setTimeout(() => {
+    refs.stage.hidden = true;
+    refs.stage.classList.remove("closing");
+  }, 520);
+}
+
+function goToAct(index) {
+  const token = stage.token;
+  window.clearTimeout(stage.timer);
+  stage.act = Math.max(0, Math.min(STAGE_ACTS.length - 1, index));
+  stage.maxAct = Math.max(stage.maxAct, stage.act);
+  const act = STAGE_ACTS[stage.act];
+
+  refs.stage.dataset.act = act.id;
+  refs.stageKicker.textContent = `${String(stage.act + 1).padStart(2, "0")} / ${String(STAGE_ACTS.length).padStart(2, "0")} · ${act.kicker}`;
+  refs.stageLine.textContent = act.line ?? "";
+  refs.stageLine.hidden = !act.line;
+  refs.stageSub.textContent = act.sub;
+  refs.stageSub.hidden = !act.sub;
+  refs.stageBack.disabled = stage.act === 0;
+  refs.stageNext.disabled = false;
+  refs.stageNext.textContent = act.nextLabel;
+  renderStageRail();
+  restartStageCaption();
+
+  const renderers = {
+    question: renderActQuestion,
+    case: renderActCase,
+    judgment: renderActJudgment,
+    receipt: renderActReceipt,
+    verify: renderActVerify,
+    tamper: renderActTamper,
+    close: renderActClose
+  };
+  renderers[act.id](token);
+}
+
+function renderStageRail(filling = stage.auto) {
+  refs.stageRail.innerHTML = STAGE_ACTS.map((act, i) => {
+    const cls = i < stage.act ? "done" : i === stage.act ? `now ${filling ? "filling" : ""}` : "";
+    const reachable = i <= stage.maxAct;
+    return `<button type="button" class="${cls}" data-act-jump="${i}" ${reachable ? "" : "disabled"}
+      aria-label="Act ${i + 1} · ${esc(act.kicker)}" title="${esc(act.kicker)}"></button>`;
+  }).join("");
+}
+
+function restartStageCaption() {
+  refs.stageCaption.style.animation = "none";
+  void refs.stageCaption.offsetWidth;
+  refs.stageCaption.style.animation = "";
+}
+
+/* ── the autoplay cursor: a hand that plays the demo the way you would ── */
+
+const CURSOR_LEAD_MS = 950; /* travel + press, budgeted inside each act's time */
+
+function placeStageCursor(el) {
+  if (!el || prefersReducedMotion()) return;
+  const r = el.getBoundingClientRect();
+  const sr = refs.stage.getBoundingClientRect();
+  const cur = refs.stageCursor;
+  cur.style.transition = "none";
+  cur.style.transform = `translate(${r.left - sr.left + r.width * 0.5}px, ${r.top - sr.top + r.height * 0.55}px)`;
+  cur.hidden = false;
+  void cur.offsetWidth;
+  cur.style.transition = "";
+  cur.classList.add("visible");
+}
+
+/* glide to an element, press, then act — aborts quietly if auto was switched off */
+function stageCursorPress(el, token, then) {
+  if (!el || prefersReducedMotion()) {
+    then?.();
+    return;
+  }
+  const r = el.getBoundingClientRect();
+  const sr = refs.stage.getBoundingClientRect();
+  const cur = refs.stageCursor;
+  cur.hidden = false;
+  cur.classList.add("visible");
+  cur.style.transform = `translate(${r.left - sr.left + r.width * 0.58}px, ${r.top - sr.top + r.height * 0.6}px)`;
+  window.setTimeout(() => {
+    if (token !== stage.token || !stage.auto) return;
+    cur.classList.add("pressing");
+    window.setTimeout(() => cur.classList.remove("pressing"), 340);
+    window.setTimeout(() => {
+      if (token !== stage.token || !stage.auto) return;
+      then?.();
+    }, 190);
+  }, 740);
+}
+
+function hideStageCursor() {
+  refs.stageCursor.classList.remove("visible", "pressing");
+}
+
+function scheduleStageAuto(ms) {
+  if (!stage.auto || !stage.open || !ms) return;
+  const token = stage.token;
+  refs.stage.style.setProperty("--act-ms", `${ms}ms`);
+  renderStageRail(true);
+  window.clearTimeout(stage.timer);
+  const total = prefersReducedMotion() ? Math.min(ms, 1500) : ms;
+  const lead = prefersReducedMotion() ? 0 : CURSOR_LEAD_MS;
+  stage.timer = window.setTimeout(() => {
+    if (token !== stage.token || !stage.auto) return;
+    stageCursorPress(refs.stageNext, token, () => stageNext());
+  }, Math.max(500, total - lead));
+}
+
+/* ── act renderers ── */
+
+function renderActQuestion(token) {
+  refs.stageCanvas.innerHTML = `
+    <div class="act act-question">
+      <span class="aq-seal" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="32" r="22.5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3.5"/><path d="M21 32.5l7.5 7.5L43 25.5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <h1>Agents are deciding<br />who gets paid.</h1>
+      <p class="aq-q">Who verifies the judge?</p>
+    </div>`;
+  scheduleStageAuto(STAGE_ACTS[0].autoMs);
+}
+
+function renderActCase(token) {
+  const c = stage.caseFile;
+  const meta = META[currentJudge];
+  refs.stageCanvas.innerHTML = `
+    <div class="act act-case">
+      <div class="sheet">
+        <div class="sheet-label"><b>${esc(meta.labels.terms)}</b><small>what was promised</small></div>
+        <p>${esc(c.terms)}</p>
+      </div>
+      <div class="sheet">
+        <div class="sheet-label"><b>${esc(meta.labels.rubric)}</b><small>what “done” means</small></div>
+        <p>${esc(c.rubric)}</p>
+      </div>
+      <div class="sheet sheet-work">
+        <div class="sheet-label"><b>${esc(meta.labels.work)}</b><small>what actually arrived · from ${esc(c.submitter)}</small></div>
+        <p>${esc(c.work)}</p>
+      </div>
+    </div>`;
+  scheduleStageAuto(STAGE_ACTS[1].autoMs);
+}
+
+async function renderActJudgment(token) {
+  const app = APP_REGISTRY[currentJudge];
+  const steps = [
+    ["Hash the inputs", "SHA-256"],
+    ["Apply the rubric", "criterion by criterion"],
+    ["Collect the evidence", "working notes kept"],
+    ["Seal the artifact", "record frozen"],
+    ["Sign the receipt", "HMAC-SHA256"]
+  ];
+  refs.stageCanvas.innerHTML = `
+    <div class="act act-judgment">
+      <div class="aj-identity">
+        <div><span>Runtime</span><strong>EigenCompute · attested TEE</strong></div>
+        <div><span>Judge identity</span><strong class="mono">${shortAddress(app.appId)}</strong></div>
+        <div><span>Signing</span><strong>HMAC-SHA256</strong></div>
+      </div>
+      <div class="aj-pipeline">
+        ${steps.map(([b, s], i) => `<div class="aj-step" data-aj="${i}"><i></i><b>${b}</b><small>${s}</small></div>`).join("")}
+      </div>
+    </div>`;
+
+  if (stage.artifact) {
+    /* re-entry via Back: show the pipeline complete, no re-judging */
+    refs.stageCanvas.querySelectorAll(".aj-step").forEach((s) => s.classList.add("done"));
+    scheduleStageAuto(2400);
+    return;
+  }
+
+  stage.busy = true;
+  refs.stageNext.disabled = true;
+  refs.stageNext.textContent = "Sealing…";
+
+  const stepEls = refs.stageCanvas.querySelectorAll(".aj-step");
+  const animate = (async () => {
+    const ms = prefersReducedMotion() ? 20 : 520;
+    for (const el of stepEls) {
+      if (token !== stage.token) return;
+      el.classList.add("active");
+      await wait(ms);
+      el.classList.remove("active");
+      el.classList.add("done");
+    }
+  })();
+
+  try {
+    const c = stage.caseFile;
+    const [data] = await Promise.all([
+      apiFetch("/api/judge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          variant: currentJudge,
+          bountyDescription: c.terms,
+          rubric: c.rubric,
+          submittedArtifact: c.work,
+          submitter: c.submitter
+        })
+      }),
+      animate
+    ]);
+    if (token !== stage.token) return;
+    stage.artifact = data.artifact;
+    judgedCases[c.id] = data.artifact.decision;
+    saveArchive(data.artifact);
+    renderArchive();
+    renderDocket();
+    stage.busy = false;
+    refs.stageNext.disabled = false;
+    refs.stageNext.textContent = STAGE_ACTS[2].nextLabel;
+    scheduleStageAuto(STAGE_ACTS[2].autoMs);
+  } catch (error) {
+    if (token !== stage.token) return;
+    stage.busy = false;
+    showToast(`The judge could not be reached: ${error.message}`, "error");
+    stopStage();
+  }
+}
+
+function stagePaperHTML(options = {}) {
+  const artifact = stage.artifact;
+  if (!artifact) return "";
+  const settlement = artifact.settlementRecommendation;
+  const scoreText = options.scoreText ?? `${artifact.score} / 100 · ${artifact.confidence}% confidence`;
+  const banner = options.banner
+    ? `<div class="receipt-banner ${options.bannerOk ? "ok" : ""}">${options.banner}</div>`
+    : "";
+  return `
+    <article class="paper receipt">
+      ${banner}
+      <header class="paper-head">
+        <span class="paper-brand">ProofJudge</span>
+        <span class="paper-doc">${esc(artifact.agent.name)} · receipt</span>
+      </header>
+      <div class="paper-verdict ${artifact.decision}">
+        <small>Verdict</small>
+        <strong>${VERDICT_LABELS[artifact.decision] ?? artifact.decision}</strong>
+        <span>${esc(SETTLEMENT_LABELS[settlement.action] ?? settlement.action)}</span>
+      </div>
+      <p class="paper-note action-note">${esc(settlement.note)}</p>
+      <dl class="paper-rows">
+        <div><dt>Case</dt><dd>${esc(artifact.taskId)}</dd></div>
+        <div data-row="score" class="${options.broken ? "broken" : ""}"><dt>Score</dt><dd id="stage-score">${scoreText}</dd></div>
+        <div><dt>Submitter</dt><dd>${esc(artifact.submitter || "anonymous")}</dd></div>
+        <div><dt>Input hash</dt><dd class="mono">${shortHash(artifact.submittedArtifactHash)}</dd></div>
+        <div><dt>Artifact hash</dt><dd class="mono">${shortHash(artifact.decisionArtifactHash)}</dd></div>
+        <div><dt>Signature</dt><dd class="mono">${artifact.signature.algorithm} · ${shortHash(artifact.signature.value)}</dd></div>
+        <div><dt>Judge identity</dt><dd class="mono">${shortAddress(artifact.deploymentIdentity?.appId)}</dd></div>
+      </dl>
+      <div class="paper-foot">
+        <span class="paper-note">Signed inside EigenCompute.<br />Edit any field and verification fails.</span>
+        <span class="seal ${options.cracked ? "" : ""}" aria-hidden="true">
+          <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="32" cy="32" r="22.5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3.5"/><path d="M21 32.5l7.5 7.5L43 25.5" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+      </div>
+    </article>`;
+}
+
+/* ── the receipt scene ──
+   Acts 4–6 share ONE persistent DOM scene. Nothing remounts between them: the
+   side panel expands and retracts, the paper recenters via flex, banners stamp
+   on and lift off. data-phase drives every move:
+     receipt → side collapsed, paper centered
+     verify  → side expands with the six checks, VERIFIED stamps on
+     tamper  → VERIFIED lifts off, checks retract, paper recenters, score waits
+     failed  → the slam: side re-expands with the post-mortem readout */
+
+function ensureReceiptScene() {
+  let scene = refs.stageCanvas.querySelector(".act-receipt");
+  if (scene && scene.dataset.case === stage.artifact.taskId) return scene;
+  const printing = !stage.printed && !prefersReducedMotion();
+  refs.stageCanvas.innerHTML = `
+    <div class="act act-receipt" data-case="${esc(stage.artifact.taskId)}" data-phase="receipt">
+      <div class="stage-paper-wrap">
+        <div class="desk-slot" data-state="${printing ? "sealing" : "sealed"}">
+          ${stagePaperHTML(printing ? { scoreText: `0 / 100 · ${stage.artifact.confidence}% confidence` } : {})}
+        </div>
+      </div>
+      <aside class="stage-side">
+        <div class="stage-checks verify-readout" id="stage-checks"></div>
+      </aside>
+    </div>`;
+  return refs.stageCanvas.querySelector(".act-receipt");
+}
+
+/* stepping back to an earlier act restores the pristine paper */
+function resetStagePaper(scene) {
+  if (!stage.tampered) return;
+  stage.tampered = null;
+  const scoreEl = scene.querySelector("#stage-score");
+  if (scoreEl) scoreEl.textContent = `${stage.artifact.score} / 100 · ${stage.artifact.confidence}% confidence`;
+  scene.querySelector('[data-row="score"]')?.classList.remove("broken");
+}
+
+function setStageBanner(slot, text, ok = false) {
+  const paper = slot.querySelector(".paper");
+  const existing = paper.querySelector(".receipt-banner");
+  if (!text) {
+    if (existing && !existing.classList.contains("leaving")) {
+      existing.classList.add("leaving");
+      window.setTimeout(() => existing.remove(), 420);
+    }
+    return;
+  }
+  if (existing) existing.remove();
+  paper.insertAdjacentHTML("afterbegin", `<div class="receipt-banner ${ok ? "ok" : ""}">${text}</div>`);
+}
+
+function renderActReceipt(token) {
+  const scene = ensureReceiptScene();
+  const slot = scene.querySelector(".desk-slot");
+  resetStagePaper(scene);
+  setStageBanner(slot, null);
+  scene.dataset.phase = "receipt";
+  if (slot.dataset.state === "sealing") {
+    stage.printed = true;
+    const scoreEl = scene.querySelector("#stage-score");
+    window.setTimeout(() => {
+      if (token !== stage.token) return;
+      countUp(scoreEl, stage.artifact.score, ` / 100 · ${stage.artifact.confidence}% confidence`);
+      slot.dataset.state = "sealed";
+    }, 900);
+  } else {
+    slot.dataset.state = "sealed"; /* verified glow eases back off on revisit */
+  }
+  scheduleStageAuto(STAGE_ACTS[3].autoMs);
+}
+
+async function renderActVerify(token) {
+  const scene = ensureReceiptScene();
+  const slot = scene.querySelector(".desk-slot");
+  resetStagePaper(scene);
+  scene.dataset.phase = "verify";
+  const checks = scene.querySelector("#stage-checks");
+  if (!stage.verification) {
+    checks.innerHTML = `<p class="empty-note">Checking against the live verifier…</p>`;
+  }
+  try {
+    const verification = stage.verification ?? (await verifyArtifact(stage.artifact));
+    if (token !== stage.token) return;
+    stage.verification = verification;
+    renderVerifyReadout(checks, verification, stage.artifact);
+    slot.dataset.state = verification.ok ? "verified" : "tampered";
+    setStageBanner(slot, verification.ok ? "VERIFIED" : "VERIFICATION FAILED", verification.ok);
+    scheduleStageAuto(STAGE_ACTS[4].autoMs);
+  } catch (error) {
+    if (token !== stage.token) return;
+    showToast(`Verification could not run: ${error.message}`, "error");
+  }
+}
+
+function renderActTamper(token) {
+  const scene = ensureReceiptScene();
+  const slot = scene.querySelector(".desk-slot");
+  resetStagePaper(scene);
+  scene.dataset.phase = "tamper"; /* checks retract, the paper slides back center */
+  slot.dataset.state = "sealed";  /* the verified glow eases off — clean slate to break */
+  setStageBanner(slot, null);     /* VERIFIED lifts away */
+  const scoreRow = scene.querySelector('[data-row="score"]');
+  if (scoreRow) scoreRow.onclick = () => runStageTamper(stage.token);
+  if (stage.auto) {
+    window.clearTimeout(stage.timer);
+    const ms = STAGE_ACTS[5].autoMs;
+    refs.stage.style.setProperty("--act-ms", `${ms}ms`);
+    renderStageRail(true);
+    stage.timer = window.setTimeout(() => {
+      if (token !== stage.token || !stage.auto) return;
+      stageCursorPress(scoreRow, token, () => runStageTamper(token));
+    }, prefersReducedMotion() ? 600 : Math.max(500, ms - CURSOR_LEAD_MS));
+  }
+}
+
+async function runStageTamper(token) {
+  if (token !== stage.token || stage.tampered) return;
+  const scene = refs.stageCanvas.querySelector(".act-receipt");
+  if (!scene) return;
+  const tampered = JSON.parse(JSON.stringify(stage.artifact));
+  const originalScore = tampered.score;
+  tampered.score = originalScore < 100 ? originalScore + 1 : originalScore - 1;
+  stage.tampered = tampered;
+
+  /* the edit lands instantly — the click must feel like it did something */
+  const scoreEl = scene.querySelector("#stage-score");
+  const scoreRow = scene.querySelector('[data-row="score"]');
+  scoreEl.textContent = `${tampered.score} / 100 · ${tampered.confidence}% confidence`;
+  scoreRow.classList.add("broken");
+
+  try {
+    const verification = await verifyArtifact(tampered);
+    if (token !== stage.token) return;
+
+    const slot = scene.querySelector(".desk-slot");
+    slot.dataset.state = "tampered";
+    setStageBanner(slot, "VERIFICATION FAILED", false);
+    scene.dataset.phase = "failed"; /* the side returns, carrying the post-mortem */
+    renderVerifyReadout(scene.querySelector("#stage-checks"), verification, tampered, {
+      compare: {
+        originalScore,
+        tamperedScore: tampered.score,
+        embedded: stage.artifact.decisionArtifactHash,
+        recomputed: verification.recomputedDecisionArtifactHash
+      }
+    });
+
+    refs.stageKicker.textContent = `06 / 07 · the tamper test`;
+    refs.stageLine.textContent = "Verification fails. The seal did its job.";
+    refs.stageSub.textContent = "One point changed after sealing — the recomputed hash no longer matches and the signature breaks. Money doesn’t move.";
+    refs.stageNext.textContent = "Why it matters →";
+    restartStageCaption();
+    scheduleStageAuto(5600);
+  } catch (error) {
+    if (token !== stage.token) return;
+    resetStagePaper(scene); /* restores the score and clears stage.tampered — the click can be tried again */
+    showToast(`Tamper test could not run: ${error.message}`, "error");
+  }
+}
+
+function renderActClose(token) {
+  stage.auto = false;
+  refs.stageAuto.setAttribute("aria-pressed", "false");
+  hideStageCursor();
+  renderStageRail();
+  refs.stageCanvas.innerHTML = `
+    <div class="act act-close">
+      <h1>Proof, not promises.</h1>
+      <p class="ac-sub">
+        ProofJudge doesn’t make AI judgment perfect — it makes it accountable.
+        Everything you just watched was judged, sealed, signed, and re-verified by a live deployment.
+      </p>
+      <p class="ac-built">Built on EigenCompute · attested TEE compute · <span class="ac-judges" aria-hidden="true"><i></i><i></i><i></i><i></i></span> four deployed judges</p>
+      <div class="ac-actions">
+        <button class="btn btn-primary btn-marquee" type="button" id="stage-open-console">
+          <span class="btn-stack"><b>Open the console</b><small>your receipt is in the ledger — and on the ${esc(APP_REGISTRY[currentJudge].label)}’s desk</small></span>
+        </button>
+        <button class="btn btn-ghost btn-marquee" type="button" id="stage-replay">
+          <span class="btn-stack"><b>Replay</b><small>run the proof again</small></span>
+        </button>
+      </div>
+    </div>`;
+  refs.stageCanvas.querySelector("#stage-open-console").addEventListener("click", () => stopStage({ toStation: true }));
+  refs.stageCanvas.querySelector("#stage-replay").addEventListener("click", () => {
+    stage.artifact = null;
+    stage.verification = null;
+    stage.tampered = null;
+    stage.printed = false;
+    stage.maxAct = 0;
+    goToAct(0);
+  });
+}
+
+/* ── stage controls ── */
+
+function stageNext() {
+  if (!stage.open || stage.busy) return;
+  const act = STAGE_ACTS[stage.act];
+  if (act.id === "tamper" && !stage.tampered) {
+    runStageTamper(stage.token);
+    return;
+  }
+  if (act.id === "close") {
+    stopStage({ toStation: true });
+    return;
+  }
+  goToAct(stage.act + 1);
+}
+
+function stageToggleAuto() {
+  stage.auto = !stage.auto;
+  refs.stageAuto.setAttribute("aria-pressed", String(stage.auto));
+  if (stage.auto) {
+    placeStageCursor(refs.stageAuto); /* the hand starts where yours just was */
+    goToAct(stage.act); /* re-enter the act so its auto timer arms */
+  } else {
+    window.clearTimeout(stage.timer);
+    renderStageRail(false);
+    hideStageCursor();
+  }
+}
+
+function countUp(el, target, suffix, ms = 900) {
+  if (!el) return;
+  if (prefersReducedMotion()) {
+    el.textContent = `${target}${suffix}`;
+    return;
+  }
+  const start = performance.now();
+  const tick = (now) => {
+    const t = Math.min(1, (now - start) / ms);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = `${Math.round(target * eased)}${suffix}`;
+    if (t < 1) window.requestAnimationFrame(tick);
+  };
+  window.requestAnimationFrame(tick);
+}
+
+/* ────────────────────────────── runtime ───────────────────────────────── */
+
+async function pingRuntime() {
+  try {
+    const health = await apiFetch("/healthz");
+    runtimeOnline = Boolean(health.ok);
+    refs.runtimePill.className = `runtime-pill ${health.ok ? "online" : ""}`;
+    refs.runtimePill.innerHTML = `<i></i>${health.ok ? "runtime online" : "status unknown"}`;
+  } catch {
+    runtimeOnline = false;
+    refs.runtimePill.className = "runtime-pill offline";
+    refs.runtimePill.innerHTML = "<i></i>runtime offline";
+  }
+  if (stationOpen) renderStation();
+}
+
+async function loadVariantConfigs() {
+  try {
+    const data = await apiFetch("/api/variants");
+    variantConfigs = Object.fromEntries(data.variants.map((v) => [v.id, v]));
+  } catch {
+    variantConfigs = {};
+  }
+  if (stationOpen) renderStation();
+}
+
+/* ────────────────────────────── events ────────────────────────────────── */
+
+refs.watchProofBtn.addEventListener("click", () => startStage());
+refs.enterConsoleBtn.addEventListener("click", () => {
+  hideEntry();
+  showStation({ push: true });
+});
+refs.proofBtn.addEventListener("click", () => startStage());
+refs.stageNext.addEventListener("click", () => stageNext());
+refs.stageBack.addEventListener("click", () => goToAct(stage.act - 1));
+refs.stageAuto.addEventListener("click", () => stageToggleAuto());
+refs.stageExit.addEventListener("click", () => stopStage());
+refs.stageRail.addEventListener("click", (event) => {
+  const dot = event.target.closest("[data-act-jump]");
+  if (!dot || dot.disabled || stage.busy || !stage.open) return;
+  goToAct(Number(dot.dataset.actJump));
+});
+
+document.querySelectorAll("[data-entry-judge]").forEach((button) => {
+  button.addEventListener("click", () => enterChamber(button.dataset.entryJudge, { push: true }));
+});
+
+document.querySelectorAll(".dock-rail [data-judge]").forEach((button) => {
+  button.addEventListener("click", () => showChamber(button.dataset.judge, { push: true }));
+});
+
+refs.stationSlot.addEventListener("click", () => showStation({ push: true }));
+
+refs.stationGrid.addEventListener("click", (event) => {
+  const verifyLink = event.target.closest("a");
+  if (verifyLink) return; /* let EigenVerify links be links */
+  const card = event.target.closest("[data-station-judge]");
+  if (card) showChamber(card.dataset.stationJudge, { push: true });
+});
+
+refs.stationRecentRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-recent-receipt]");
+  if (!row) return;
+  const record = readArchive()[Number(row.dataset.recentReceipt)];
+  if (!record?.artifact) return;
+  showChamber(record.artifact.agent.variant, { push: true });
+  renderReceipt(record.artifact, { animate: false, save: false });
+  showToast(`Receipt ${record.artifact.taskId} back on the desk.`);
+});
+
+refs.openLedgerBtn.addEventListener("click", () => openDrawer("ledger", { opener: refs.openLedgerBtn }));
+refs.openTrustBtn.addEventListener("click", () => openDrawer("trust", { opener: refs.openTrustBtn }));
+refs.drawerClose.addEventListener("click", () => closeDrawer());
+refs.drawerVeil.addEventListener("click", () => closeDrawer());
+
+const tickerEl = document.querySelector(".ticker");
+tickerEl.addEventListener("pointerenter", () => {
+  ticker.target = 0;
+});
+tickerEl.addEventListener("pointerleave", () => {
+  if (!document.body.classList.contains("entry-open")) return;
+  startTicker();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopTicker();
+  } else if (document.body.classList.contains("entry-open")) {
+    startTicker();
+  }
+});
+
+/* dossier textareas grow with their content — documents, not boxes */
+const AUTOSIZE_IDS = ["bountyDescription", "rubric", "submittedArtifact"];
+function autosizeDossier() {
+  AUTOSIZE_IDS.forEach((id) => {
+    const el = $(id);
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + 2}px`;
+  });
+}
+AUTOSIZE_IDS.forEach((id) => $(id).addEventListener("input", autosizeDossier));
+window.addEventListener("resize", () => {
+  window.clearTimeout(autosizeDossier.timer);
+  autosizeDossier.timer = window.setTimeout(autosizeDossier, 120);
+});
+
+refs.docketList.addEventListener("click", (event) => {
+  const card = event.target.closest("[data-case]");
+  if (!card) return;
+  const next = CASE_LIBRARY[currentJudge].find((c) => c.id === card.dataset.case);
+  loadCase(next);
+});
+
+refs.shuffleBtn.addEventListener("click", () => shuffleCase());
+
+refs.form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await generateReceipt().catch(() => {});
+});
+
+refs.verifyBtn.addEventListener("click", () => {
+  verifyCurrentReceipt().catch((error) => showToast(`Verification failed to run: ${error.message}`, "error"));
+});
+
+refs.tamperBtn.addEventListener("click", () => {
+  tamperCurrentReceipt().catch((error) => showToast(`Tamper test failed to run: ${error.message}`, "error"));
+});
+
+refs.verifyPasteBtn.addEventListener("click", async () => {
+  refs.pasteReadout.innerHTML = `<p class="empty-note">Checking…</p>`;
+  try {
+    const artifact = JSON.parse(refs.verifyJson.value);
+    const verification = await verifyArtifact(artifact);
+    renderVerifyReadout(refs.pasteReadout, verification, artifact);
+  } catch (error) {
+    refs.pasteReadout.innerHTML = `
+      <div class="verify-summary fail">
+        <strong>Could not verify</strong>
+        <span>${esc(error.message)}</span>
+      </div>`;
+  }
+});
+
+refs.copyJsonBtn.addEventListener("click", async () => {
+  if (!currentArtifact) return;
+  const json = JSON.stringify(currentArtifact, null, 2);
+  try {
+    await navigator.clipboard.writeText(json);
+    showToast("Receipt JSON copied. Paste it anywhere — including the Trust tab.");
+  } catch {
+    refs.verifyJson.value = json;
+    openDrawer("trust");
+    showToast("Clipboard unavailable — JSON placed in the Trust verifier.");
+  }
+});
+
+refs.archiveTable.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-load-receipt]");
+  if (!button) return;
+  const record = readArchive()[Number(button.dataset.loadReceipt)];
+  if (!record?.artifact) return;
+  renderReceipt(record.artifact, { animate: false, save: false });
+  showToast(`Receipt ${record.artifact.taskId} back on the desk.`);
+});
+
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href]");
+  if (!link) return;
+  const href = link.getAttribute("href");
+  if (!href || href.startsWith("http") || href.startsWith("#") || href.startsWith("//")) return;
+  event.preventDefault();
+  if (href === "/" || link.dataset.showEntry !== undefined) {
+    history.pushState(null, "", "/");
+    showEntry();
+  }
+});
+
+window.addEventListener("popstate", () => route());
+
+document.addEventListener("keydown", (event) => {
+  if (stage.open) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      stopStage();
+    } else if (event.key === "ArrowRight" || event.key === " ") {
+      if (event.target.closest("button, a, input, textarea")) return;
+      event.preventDefault();
+      stageNext();
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      if (stage.act > 0) goToAct(stage.act - 1);
+    }
+    return;
+  }
+  if (event.key === "Escape" && currentDrawer) {
+    event.preventDefault();
+    closeDrawer();
+  }
+});
+
+/* ────────────────────────────── helpers ───────────────────────────────── */
 
 async function apiFetch(url, options) {
   const response = await fetch(url, options);
@@ -1504,6 +1930,11 @@ async function apiFetch(url, options) {
     throw new Error(body || `HTTP ${response.status}`);
   }
   return response.json();
+}
+
+function eigenVerifyUrl(appId, judge) {
+  if (appId && appId.startsWith("0x")) return `https://verify.eigencloud.xyz/app/${appId}`;
+  return APP_REGISTRY[judge].verifyUrl;
 }
 
 function esc(value) {
@@ -1515,17 +1946,17 @@ function esc(value) {
 }
 
 function shortHash(value) {
-  const text = String(value || "-");
-  return text.length > 18 ? `${text.slice(0, 10)}...${text.slice(-8)}` : text;
+  const text = String(value || "—");
+  return text.length > 18 ? `${text.slice(0, 10)}…${text.slice(-8)}` : text;
 }
 
 function shortAddress(value) {
-  const text = String(value || "-");
-  return text.startsWith("0x") && text.length > 14 ? `${text.slice(0, 8)}...${text.slice(-6)}` : text;
+  const text = String(value || "—");
+  return text.startsWith("0x") && text.length > 14 ? `${text.slice(0, 8)}…${text.slice(-6)}` : text;
 }
 
 function formatTime(value) {
-  if (!value) return "-";
+  if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString([], { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -1539,29 +1970,28 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function failRow(label, detail) {
-  return `
-    <div class="verify-row fail">
-      <span>FAIL</span>
-      <strong>${esc(label)}</strong>
-      <small>${esc(detail)}</small>
-    </div>
-  `;
-}
-
 function showToast(message, tone = "ok") {
+  /* the stage narrates its own run — only let errors through */
+  if (tone !== "error" && document.body.classList.contains("stage-active")) return;
   refs.toast.textContent = message;
-  refs.toast.className = `toast ${tone}`;
+  refs.toast.className = `toast ${tone === "error" ? "error" : ""}`;
   refs.toast.hidden = false;
   window.clearTimeout(showToast.timer);
   showToast.timer = window.setTimeout(() => {
     refs.toast.hidden = true;
-  }, 3200);
+  }, 3400);
 }
 
-function clearToast() {
-  window.clearTimeout(showToast.timer);
-  refs.toast.hidden = true;
+/* ────────────────────────────── init ──────────────────────────────────── */
+
+function init() {
+  selectJudge("code", { push: false });
+  renderArchive();
+  resetReceipt();
+  renderTicker();
+  route();
+  pingRuntime();
+  loadVariantConfigs();
 }
 
 init();

@@ -65,6 +65,10 @@ app.get("/agents/:variant", (req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
+app.get(["/console", "/agents"], (_req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
+
 const port = Number(process.env.PORT || 3000);
 
 if (process.env.NODE_ENV !== "test") {
