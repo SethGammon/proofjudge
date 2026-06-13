@@ -114,7 +114,7 @@ jobs:
           os.close(slave_fd)
 
           deadline = time.monotonic() + (45 * 60)
-          sent_confirm = False
+          answered_confirmations = set()
           sent_registry = False
           sent_target = False
           last_cursor_reply = 0.0
@@ -150,16 +150,14 @@ jobs:
                               last_cursor_reply = now
 
                       lower = transcript.lower()
-                      if (
-                          not sent_confirm
-                          and (
-                              "would you like to layer" in lower
-                              or "layer the image with eigenx components" in lower
-                              or "(y/n)" in lower
-                          )
-                      ):
-                          os.write(master_fd, b"y\r")
-                          sent_confirm = True
+                      confirmation_prompts = {
+                          "layer": "layer the image with eigenx components",
+                          "env": "is this categorization correct",
+                      }
+                      for prompt_name, prompt_text in confirmation_prompts.items():
+                          if prompt_name not in answered_confirmations and prompt_text in lower:
+                              os.write(master_fd, b"y\r")
+                              answered_confirmations.add(prompt_name)
 
                       if not sent_registry and "select image destination" in lower:
                           os.write(master_fd, b"\r")
