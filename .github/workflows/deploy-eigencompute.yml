@@ -43,6 +43,10 @@ jobs:
             id: "0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94"
             env_secret: ENV_GOVERNANCE
     steps:
+      - name: Checkout
+        if: inputs.app == 'all' || inputs.app == matrix.name
+        uses: actions/checkout@v4
+
       - name: Install eigenx CLI
         if: inputs.app == 'all' || inputs.app == matrix.name
         run: |
@@ -62,16 +66,14 @@ jobs:
           EIGENX_PRIVATE_KEY: ${{ secrets.EIGENX_PRIVATE_KEY }}
           APP_ENV_FILE: ${{ secrets[matrix.env_secret] }}
           APP_ID: ${{ matrix.id }}
-          IMAGE_REF: ${{ inputs.image }}
-          LAYERED_IMAGE_REF: ${{ inputs.image }}-eigenx
+          DEPLOY_IMAGE_REF: ${{ inputs.image }}-eigenx
         run: |
           trap 'rm -f app.env' EXIT
           printf '%s' "$APP_ENV_FILE" > app.env
           # eigenx (urfave/cli) stops flag parsing at the first positional arg —
-          # options must precede <app-id> <image_ref>. The image-layering
-          # confirmation and target-image prompts need a TTY; this pty shim
-          # answers them and responds to cursor-position probes emitted by the
-          # prompt library.
+          # options must precede <app-id> <image_ref>. Env categorization still
+          # needs a TTY, so this pty shim answers that prompt and responds to
+          # cursor-position probes emitted by the prompt library.
           python3 - <<'PY'
           import os
           import pty
@@ -90,6 +92,8 @@ jobs:
               "--environment",
               "mainnet-alpha",
               "--disable-telemetry",
+              "--dockerfile",
+              "Dockerfile",
               "--instance-type",
               "g1-standard-4t",
               "--log-visibility",
@@ -97,7 +101,7 @@ jobs:
               "--resource-usage-monitoring",
               "enable",
               os.environ["APP_ID"],
-              os.environ["IMAGE_REF"],
+              os.environ["DEPLOY_IMAGE_REF"],
           ]
 
           master_fd, slave_fd = pty.openpty()
@@ -119,7 +123,7 @@ jobs:
           sent_target = False
           last_cursor_reply = 0.0
           transcript = ""
-          target_ref = os.environ["LAYERED_IMAGE_REF"]
+          target_ref = os.environ["DEPLOY_IMAGE_REF"]
 
           while True:
               if time.monotonic() > deadline:
