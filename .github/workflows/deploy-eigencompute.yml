@@ -70,6 +70,12 @@ jobs:
         run: |
           trap 'rm -f app.env' EXIT
           printf '%s' "$APP_ENV_FILE" > app.env
+          while IFS='=' read -r name value; do
+            case "$name" in ''|\#*) continue ;; esac
+            if [ -n "$value" ]; then
+              echo "::add-mask::$value"
+            fi
+          done < app.env
           # eigenx (urfave/cli) stops flag parsing at the first positional arg —
           # options must precede <app-id> <image_ref>. Env categorization still
           # needs a TTY, so this pty shim answers that prompt and responds to
@@ -119,6 +125,7 @@ jobs:
 
           deadline = time.monotonic() + (45 * 60)
           answered_confirmations = set()
+          preanswered_env = False
           sent_registry = False
           sent_target = False
           last_cursor_reply = 0.0
@@ -154,6 +161,14 @@ jobs:
                               last_cursor_reply = now
 
                       lower = transcript.lower()
+                      if (
+                          not preanswered_env
+                          and "your container will deploy with the following environment variables" in lower
+                      ):
+                          os.write(master_fd, b"y\r")
+                          answered_confirmations.add("env")
+                          preanswered_env = True
+
                       confirmation_prompts = {
                           "layer": "layer the image with eigenx components",
                           "env": "is this categorization correct",
