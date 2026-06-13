@@ -167,10 +167,7 @@ jobs:
                           not sent_target
                           and (
                               "enter target image reference" in lower
-                              or (
-                                  "enter image reference" in lower
-                                  and "eigenx-compatible version" in lower
-                              )
+                              or "enter image reference" in lower
                           )
                       ):
                           print(f"\nSupplying layered image target: {target_ref}")
