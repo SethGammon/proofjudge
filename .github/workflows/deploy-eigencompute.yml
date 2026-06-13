@@ -126,6 +126,8 @@ jobs:
           deadline = time.monotonic() + (45 * 60)
           answered_confirmations = set()
           preanswered_env = False
+          env_response_until = 0.0
+          last_env_response = 0.0
           sent_registry = False
           sent_target = False
           last_cursor_reply = 0.0
@@ -165,7 +167,8 @@ jobs:
                           not preanswered_env
                           and "your container will deploy with the following environment variables" in lower
                       ):
-                          os.write(master_fd, b"y\r")
+                          print("\nSupplying env categorization confirmation.")
+                          env_response_until = time.monotonic() + 30
                           preanswered_env = True
 
                       confirmation_prompts = {
@@ -193,6 +196,12 @@ jobs:
                           sent_target = True
                   elif proc.poll() is not None:
                       break
+
+              if env_response_until and time.monotonic() < env_response_until:
+                  now = time.monotonic()
+                  if now - last_env_response > 0.75:
+                      os.write(master_fd, b"\x1b[1;1Ry\r")
+                      last_env_response = now
 
               if proc.poll() is not None:
                   break
