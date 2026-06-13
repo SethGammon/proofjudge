@@ -166,7 +166,6 @@ jobs:
                           and "your container will deploy with the following environment variables" in lower
                       ):
                           os.write(master_fd, b"y\r")
-                          answered_confirmations.add("env")
                           preanswered_env = True
 
                       confirmation_prompts = {
