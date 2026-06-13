@@ -17,6 +17,10 @@ on:
 env:
   EIGENX_VERSION: v0.2.16
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   upgrade:
     runs-on: ubuntu-latest
@@ -47,6 +51,11 @@ jobs:
           BIN=$(find . -maxdepth 2 -name eigenx -type f | head -1)
           sudo install "$BIN" /usr/local/bin/eigenx
 
+      - name: Log in to GHCR
+        if: inputs.app == 'all' || inputs.app == matrix.name
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
       - name: Upgrade ${{ matrix.name }} judge
         if: inputs.app == 'all' || inputs.app == matrix.name
         env:
@@ -54,13 +63,15 @@ jobs:
           APP_ENV_FILE: ${{ secrets[matrix.env_secret] }}
           APP_ID: ${{ matrix.id }}
           IMAGE_REF: ${{ inputs.image }}
+          LAYERED_IMAGE_REF: ${{ inputs.image }}-eigenx
         run: |
           trap 'rm -f app.env' EXIT
           printf '%s' "$APP_ENV_FILE" > app.env
           # eigenx (urfave/cli) stops flag parsing at the first positional arg —
           # options must precede <app-id> <image_ref>. The image-layering
-          # confirmation needs a TTY; this pty shim answers that prompt and
-          # responds to cursor-position probes emitted by the prompt library.
+          # confirmation and target-image prompts need a TTY; this pty shim
+          # answers them and responds to cursor-position probes emitted by the
+          # prompt library.
           python3 - <<'PY'
           import os
           import pty
@@ -104,8 +115,11 @@ jobs:
 
           deadline = time.monotonic() + (45 * 60)
           sent_confirm = False
+          sent_registry = False
+          sent_target = False
           last_cursor_reply = 0.0
           transcript = ""
+          target_ref = os.environ["LAYERED_IMAGE_REF"]
 
           while True:
               if time.monotonic() > deadline:
@@ -146,6 +160,24 @@ jobs:
                       ):
                           os.write(master_fd, b"y\r")
                           sent_confirm = True
+
+                      if not sent_registry and "select image destination" in lower:
+                          os.write(master_fd, b"\r")
+                          sent_registry = True
+
+                      if (
+                          not sent_target
+                          and (
+                              "enter target image reference" in lower
+                              or (
+                                  "enter image reference" in lower
+                                  and "eigenx-compatible version" in lower
+                              )
+                          )
+                      ):
+                          print(f"\nSupplying layered image target: {target_ref}")
+                          os.write(master_fd, (target_ref + "\r").encode())
+                          sent_target = True
                   elif proc.poll() is not None:
                       break
 
