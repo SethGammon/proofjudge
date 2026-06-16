@@ -83,6 +83,14 @@ jobs:
               echo "::add-mask::$value"
             fi
           done < app.env
+          # In prebuilt mode, remove the Dockerfile so eigenx skips its interactive
+          # "Choose deployment method:" Select prompt (which appears only when a
+          # Dockerfile is present and --dockerfile is not passed) and goes straight
+          # to deploying the existing image. The checkout is ephemeral in CI.
+          if [ "$BUILD_MODE" = "prebuilt" ]; then
+            rm -f Dockerfile
+            echo "prebuilt mode: removed Dockerfile -> eigenx deploys the existing image, no method prompt"
+          fi
           # eigenx (urfave/cli) stops flag parsing at the first positional arg —
           # options must precede <app-id> <image_ref>. Env categorization still
           # needs a TTY, so this pty shim answers that prompt and responds to
