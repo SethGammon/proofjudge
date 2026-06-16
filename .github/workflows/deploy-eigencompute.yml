@@ -119,10 +119,16 @@ jobs:
           ]
           if mode == "dockerfile":
               cmd += ["--dockerfile", "Dockerfile"]
+          # NOTE: the original working redeploy.ps1 passed NONE of the flags
+          # below. Forcing --log-visibility private causes a permission change
+          # mid-upgrade, and --resource-usage-monitoring enable adds a component;
+          # either can make the TEE release Fail. Use the safe defaults (public
+          # logs = no permission change; monitoring disabled) to match the
+          # known-good deploy. Keep --instance-type so we don't get a Select.
           cmd += [
               "--instance-type", "g1-standard-4t",
-              "--log-visibility", "private",
-              "--resource-usage-monitoring", "enable",
+              "--log-visibility", "public",
+              "--resource-usage-monitoring", "disable",
               os.environ["APP_ID"],
               os.environ["DEPLOY_IMAGE_REF"] if mode == "dockerfile" else os.environ["SOURCE_IMAGE"],
           ]
