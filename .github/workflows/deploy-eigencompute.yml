@@ -125,12 +125,10 @@ jobs:
 
           deadline = time.monotonic() + (45 * 60)
           answered_confirmations = set()
-          preanswered_env = False
-          env_response_until = 0.0
-          last_env_response = 0.0
           sent_registry = False
           sent_target = False
           last_cursor_reply = 0.0
+          last_retry = 0.0
           transcript = ""
           target_ref = os.environ["DEPLOY_IMAGE_REF"]
 
@@ -163,18 +161,33 @@ jobs:
                               last_cursor_reply = now
 
                       lower = transcript.lower()
-                      if (
-                          not preanswered_env
-                          and "your container will deploy with the following environment variables" in lower
-                      ):
-                          print("\nSupplying env categorization confirmation.")
-                          env_response_until = time.monotonic() + 30
-                          preanswered_env = True
 
                       confirmation_prompts = {
                           "layer": "layer the image with eigenx components",
                           "env": "is this categorization correct",
+                          # Mainnet on-chain cost confirmation: "Upgrade app with
+                          # image: ... (max cost: N ETH)" -> "Continue? (y/N)".
+                          # With no handler the code job hung here until the
+                          # 45-min timeout (exit 124).
+                          "continue": "continue?",
                       }
+
+                      # Re-arm a confirmation whose answer eigenx rejected (e.g. a
+                      # keystroke was eaten) so it gets a fresh, CLEAN "y". The old
+                      # shim sprayed "\x1b[1;1Ry\r" — a synthetic cursor report glued
+                      # to the answer — which this prompt read as the literal "1Ry"
+                      # and refused forever. Cursor probes are answered separately;
+                      # answers stay bare. Scope to what's currently on screen so a
+                      # stale earlier prompt isn't re-answered into the wrong reader.
+                      recent = transcript[-400:].lower()
+                      if "is not a valid answer" in recent or "please try again" in recent:
+                          now = time.monotonic()
+                          if now - last_retry > 1.0:
+                              for prompt_name, prompt_text in confirmation_prompts.items():
+                                  if prompt_text in recent:
+                                      answered_confirmations.discard(prompt_name)
+                              last_retry = now
+
                       for prompt_name, prompt_text in confirmation_prompts.items():
                           if prompt_name not in answered_confirmations and prompt_text in lower:
                               os.write(master_fd, b"y\r")
@@ -196,12 +209,6 @@ jobs:
                           sent_target = True
                   elif proc.poll() is not None:
                       break
-
-              if env_response_until and time.monotonic() < env_response_until:
-                  now = time.monotonic()
-                  if now - last_env_response > 0.75:
-                      os.write(master_fd, b"\x1b[1;1Ry\r")
-                      last_env_response = now
 
               if proc.poll() is not None:
                   break
