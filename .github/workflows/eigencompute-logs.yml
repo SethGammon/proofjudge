@@ -1,6 +1,6 @@
 name: EigenCompute Logs (diagnostic)
 
-# Read-only: fetches an app's status + container logs from EigenCompute.
+# Read-only: fetches app status (+ container logs for a single app).
 # No build, no upgrade, no on-chain transaction — safe to run anytime.
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
       app:
         description: Which judge to inspect
         type: choice
-        options: [code, research, negotiation, governance]
+        options: [code, research, negotiation, governance, all]
         default: code
 
 env:
@@ -30,18 +30,21 @@ jobs:
         env:
           EIGENX_PRIVATE_KEY: ${{ secrets.EIGENX_PRIVATE_KEY }}
         run: |
-          case "${{ inputs.app }}" in
-            code)        APP=0xd3647631C4706be744BE813cD0226e4f149e5aC0 ;;
-            research)    APP=0x898E1d5603070C7452Ee7F8CF288639A63a217cc ;;
-            negotiation) APP=0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322 ;;
-            governance)  APP=0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94 ;;
-          esac
-          echo "::group::eigenx app info ${{ inputs.app }} ($APP)"
-          eigenx app info "$APP" --environment mainnet-alpha --disable-telemetry < /dev/null || true
-          echo "::endgroup::"
-          echo "::group::eigenx app logs ${{ inputs.app }} ($APP)"
-          eigenx app logs "$APP" --environment mainnet-alpha --disable-telemetry < /dev/null || true
-          echo "::endgroup::"
-          echo "::group::eigenx app logs --watch (stream crash output, 150s cap)"
-          timeout 150 eigenx app logs "$APP" --environment mainnet-alpha --disable-telemetry --watch < /dev/null || true
-          echo "::endgroup::"
+          declare -A APPS=(
+            [code]=0xd3647631C4706be744BE813cD0226e4f149e5aC0
+            [research]=0x898E1d5603070C7452Ee7F8CF288639A63a217cc
+            [negotiation]=0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322
+            [governance]=0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94
+          )
+          SEL="${{ inputs.app }}"
+          if [ "$SEL" = "all" ]; then NAMES="code research negotiation governance"; else NAMES="$SEL"; fi
+          for n in $NAMES; do
+            echo "::group::eigenx app info $n (${APPS[$n]})"
+            eigenx app info "${APPS[$n]}" --environment mainnet-alpha --disable-telemetry < /dev/null || true
+            echo "::endgroup::"
+          done
+          if [ "$SEL" != "all" ]; then
+            echo "::group::eigenx app logs $SEL"
+            eigenx app logs "${APPS[$SEL]}" --environment mainnet-alpha --disable-telemetry < /dev/null || true
+            echo "::endgroup::"
+          fi
