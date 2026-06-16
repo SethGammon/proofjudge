@@ -13,6 +13,11 @@ on:
       image:
         description: Image reference
         default: ghcr.io/sethgammon/proofjudge:latest
+      build_mode:
+        description: "dockerfile = eigenx builds from Dockerfile; prebuilt = layer the already-built image (original redeploy.ps1 method)"
+        type: choice
+        options: [dockerfile, prebuilt]
+        default: dockerfile
 
 env:
   EIGENX_VERSION: v0.2.16
@@ -66,6 +71,8 @@ jobs:
           EIGENX_PRIVATE_KEY: ${{ secrets.EIGENX_PRIVATE_KEY }}
           APP_ENV_FILE: ${{ secrets[matrix.env_secret] }}
           APP_ID: ${{ matrix.id }}
+          BUILD_MODE: ${{ inputs.build_mode }}
+          SOURCE_IMAGE: ${{ inputs.image }}
           DEPLOY_IMAGE_REF: ${{ inputs.image }}-eigenx
         run: |
           trap 'rm -f app.env' EXIT
@@ -89,25 +96,27 @@ jobs:
           import sys
           import time
 
+          # dockerfile mode: eigenx builds from Dockerfile, layers it, and pushes
+          #   the result to <image>-eigenx (the positional target).
+          # prebuilt mode (the original redeploy.ps1 method): eigenx layers the
+          #   already-built <image> (e.g. :latest from docker-publish) — no build;
+          #   the layered result is pushed to the target it prompts for (the shim
+          #   answers that with DEPLOY_IMAGE_REF).
+          mode = os.environ.get("BUILD_MODE", "dockerfile")
           cmd = [
-              "eigenx",
-              "app",
-              "upgrade",
-              "--env-file",
-              "app.env",
-              "--environment",
-              "mainnet-alpha",
+              "eigenx", "app", "upgrade",
+              "--env-file", "app.env",
+              "--environment", "mainnet-alpha",
               "--disable-telemetry",
-              "--dockerfile",
-              "Dockerfile",
-              "--instance-type",
-              "g1-standard-4t",
-              "--log-visibility",
-              "private",
-              "--resource-usage-monitoring",
-              "enable",
+          ]
+          if mode == "dockerfile":
+              cmd += ["--dockerfile", "Dockerfile"]
+          cmd += [
+              "--instance-type", "g1-standard-4t",
+              "--log-visibility", "private",
+              "--resource-usage-monitoring", "enable",
               os.environ["APP_ID"],
-              os.environ["DEPLOY_IMAGE_REF"],
+              os.environ["DEPLOY_IMAGE_REF"] if mode == "dockerfile" else os.environ["SOURCE_IMAGE"],
           ]
 
           master_fd, slave_fd = pty.openpty()
