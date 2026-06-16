@@ -76,7 +76,11 @@ jobs:
           DEPLOY_IMAGE_REF: ${{ inputs.image }}-eigenx
         run: |
           trap 'rm -f app.env' EXIT
-          printf '%s' "$APP_ENV_FILE" > app.env
+          # Strip CR: a stray \r\n in the env secret survives into the values,
+          # and the eigenx TEE wrapper sources the env before the app starts —
+          # a CR in a value breaks that source step and the app exits (Failed),
+          # regardless of image. tr -d '\r' guarantees clean LF-only values.
+          printf '%s' "$APP_ENV_FILE" | tr -d '\r' > app.env
           while IFS='=' read -r name value; do
             case "$name" in ''|\#*) continue ;; esac
             if [ -n "$value" ]; then
