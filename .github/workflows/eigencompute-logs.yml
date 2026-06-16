@@ -42,3 +42,6 @@ jobs:
           echo "::group::eigenx app logs ${{ inputs.app }} ($APP)"
           eigenx app logs "$APP" --environment mainnet-alpha --disable-telemetry < /dev/null || true
           echo "::endgroup::"
+          echo "::group::eigenx app logs --watch (stream crash output, 150s cap)"
+          timeout 150 eigenx app logs "$APP" --environment mainnet-alpha --disable-telemetry --watch < /dev/null || true
+          echo "::endgroup::"
