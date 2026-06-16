@@ -143,6 +143,7 @@ jobs:
           deadline = time.monotonic() + (12 * 60)
           sent_registry = False
           sent_target = False
+          sent_decline = False
           last_yn_answer = 0.0
           transcript = ""
           target_ref = os.environ["DEPLOY_IMAGE_REF"]
@@ -178,8 +179,19 @@ jobs:
                       lower = transcript.lower()
 
                       if not sent_registry and "select image destination" in lower:
-                          os.write(master_fd, b"\r")
+                          # Multiple registries may be detected and the highlighted
+                          # default can be one the CI token cannot push to (e.g.
+                          # docker.io/githubactions/...). survey Select supports
+                          # type-to-filter, so narrow to the ghcr.io option (which
+                          # GITHUB_TOKEN can write) and select it.
+                          os.write(master_fd, b"ghcr\r")
                           sent_registry = True
+
+                      # If a push still fails and eigenx offers another registry,
+                      # decline so the job fails fast instead of hanging to timeout.
+                      if not sent_decline and "different registry" in lower:
+                          os.write(master_fd, b"n\r")
+                          sent_decline = True
 
                       if (
                           not sent_target
