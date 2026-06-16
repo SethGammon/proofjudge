@@ -1,0 +1,104 @@
+name: EigenCompute Recover (start/stop)
+
+# Restart an Exited app (re-runs its existing image, no rebuild) or stop one.
+# eigenx app start/stop are on-chain mainnet txs that emit a single
+# "Continue? (y/N)" survey prompt; a pty shim answers it. A wrong-state
+# start/stop reverts at gas estimation (no tx, no ETH spent).
+on:
+  workflow_dispatch:
+    inputs:
+      op:
+        description: Operation
+        type: choice
+        options: [start, stop]
+        default: start
+      app:
+        description: Which judge
+        type: choice
+        options: [research, negotiation, code, governance]
+        default: research
+
+env:
+  EIGENX_VERSION: v0.2.16
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Install eigenx CLI
+        run: |
+          curl -sL "https://github.com/Layr-Labs/eigenx-cli/releases/download/${EIGENX_VERSION}/eigenx-cli-linux-amd64-${EIGENX_VERSION}.tar.gz" -o eigenx.tgz
+          tar xzf eigenx.tgz
+          BIN=$(find . -maxdepth 2 -name eigenx -type f | head -1)
+          sudo install "$BIN" /usr/local/bin/eigenx
+
+      - name: ${{ inputs.op }} ${{ inputs.app }}
+        env:
+          EIGENX_PRIVATE_KEY: ${{ secrets.EIGENX_PRIVATE_KEY }}
+          OP: ${{ inputs.op }}
+        run: |
+          case "${{ inputs.app }}" in
+            code)        APP=0xd3647631C4706be744BE813cD0226e4f149e5aC0 ;;
+            research)    APP=0x898E1d5603070C7452Ee7F8CF288639A63a217cc ;;
+            negotiation) APP=0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322 ;;
+            governance)  APP=0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94 ;;
+          esac
+          echo "=== before ==="; eigenx app info "$APP" --environment mainnet-alpha --disable-telemetry < /dev/null || true
+          APP_ID="$APP" python3 - <<'PY'
+          import os, pty, select, signal, subprocess, sys, time
+
+          cmd = ["eigenx", "app", os.environ["OP"], "--environment", "mainnet-alpha",
+                 "--disable-telemetry", os.environ["APP_ID"]]
+
+          master_fd, slave_fd = pty.openpty()
+          env = os.environ.copy()
+          env.setdefault("TERM", "xterm")
+          proc = subprocess.Popen(cmd, stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
+                                  env=env, start_new_session=True)
+          os.close(slave_fd)
+
+          deadline = time.monotonic() + (8 * 60)
+          last_yn_answer = 0.0
+          transcript = ""
+
+          while True:
+              if time.monotonic() > deadline:
+                  print("\nTimed out waiting for eigenx.", file=sys.stderr)
+                  try:
+                      os.killpg(proc.pid, signal.SIGTERM)
+                  except ProcessLookupError:
+                      pass
+                  sys.exit(124)
+
+              ready, _, _ = select.select([master_fd], [], [], 0.2)
+              if master_fd in ready:
+                  try:
+                      data = os.read(master_fd, 4096)
+                  except OSError:
+                      data = b""
+                  if data:
+                      text = data.decode("utf-8", "replace")
+                      sys.stdout.write(text)
+                      sys.stdout.flush()
+                      transcript = (transcript + text)[-4000:]
+                      # answer every cursor-position probe survey emits
+                      for _ in range(text.count("\x1b[6n")):
+                          os.write(master_fd, b"\x1b[1;1R")
+                  elif proc.poll() is not None:
+                      break
+
+              # answer the on-chain "Continue? (y/N)" cost prompt with a clean "y"
+              recent = transcript[-200:].lower()
+              if "(y/n)" in recent and "different registry" not in recent:
+                  now = time.monotonic()
+                  if now - last_yn_answer > 0.5:
+                      os.write(master_fd, b"y\r")
+                      last_yn_answer = now
+
+              if proc.poll() is not None:
+                  break
+
+          sys.exit(proc.returncode)
+          PY
+          echo "=== after ==="; eigenx app info "$APP" --environment mainnet-alpha --disable-telemetry < /dev/null || true
