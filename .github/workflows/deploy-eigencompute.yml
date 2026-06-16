@@ -142,9 +142,9 @@ jobs:
 
           deadline = time.monotonic() + (12 * 60)
           sent_registry = False
-          sent_target = False
           sent_decline = False
           last_yn_answer = 0.0
+          last_target_send = 0.0
           transcript = ""
           target_ref = os.environ["DEPLOY_IMAGE_REF"]
 
@@ -194,16 +194,9 @@ jobs:
                           os.write(master_fd, b"n\r")
                           sent_decline = True
 
-                      if (
-                          not sent_target
-                          and (
-                              "enter target image reference" in lower
-                              or "enter image reference" in lower
-                          )
-                      ):
-                          print(f"\nSupplying layered image target: {target_ref}")
-                          os.write(master_fd, (target_ref + "\r").encode())
-                          sent_target = True
+                      # (the layered-target input prompt is answered resiliently
+                      # in the periodic section below, since survey can flush a
+                      # single early keystroke just like the y/N prompts.)
                   elif proc.poll() is not None:
                       break
 
@@ -219,6 +212,15 @@ jobs:
                   if now - last_yn_answer > 0.5:
                       os.write(master_fd, b"y\r")
                       last_yn_answer = now
+
+              # Layered-target input prompt: re-send our exact ref until accepted.
+              # Stop once the next stage (categorization) shows, so a stray
+              # buffered ref can't land in a later prompt.
+              if ("enter image reference" in recent or "enter target image reference" in recent) and "categorization" not in recent:
+                  now = time.monotonic()
+                  if now - last_target_send > 1.5:
+                      os.write(master_fd, (target_ref + "\r").encode())
+                      last_target_send = now
 
               if proc.poll() is not None:
                   break
