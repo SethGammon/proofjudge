@@ -48,3 +48,23 @@ jobs:
             eigenx app logs "${APPS[$SEL]}" --environment mainnet-alpha --disable-telemetry < /dev/null || true
             echo "::endgroup::"
           fi
+
+      - name: Account overview
+        env:
+          EIGENX_PRIVATE_KEY: ${{ secrets.EIGENX_PRIVATE_KEY }}
+        run: |
+          echo "::group::eigenx --version"
+          eigenx --version < /dev/null || true
+          echo "::endgroup::"
+          echo "::group::eigenx auth whoami"
+          eigenx auth whoami < /dev/null || true
+          echo "::endgroup::"
+          echo "::group::eigenx app list (all apps + status)"
+          eigenx app list --environment mainnet-alpha --disable-telemetry < /dev/null || true
+          echo "::endgroup::"
+          echo "::group::eigenx app info code --help (flags available)"
+          eigenx app info --help < /dev/null || true
+          echo "::endgroup::"
+          echo "::group::eigenx app upgrade --help (rollback / image-ref options)"
+          eigenx app upgrade --help < /dev/null || true
+          echo "::endgroup::"
