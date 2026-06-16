@@ -179,12 +179,13 @@ jobs:
                       lower = transcript.lower()
 
                       if not sent_registry and "select image destination" in lower:
-                          # Multiple registries may be detected and the highlighted
-                          # default can be one the CI token cannot push to (e.g.
-                          # docker.io/githubactions/...). survey Select supports
-                          # type-to-filter, so narrow to the ghcr.io option (which
-                          # GITHUB_TOKEN can write) and select it.
-                          os.write(master_fd, b"ghcr\r")
+                          # The auto-suggested options are both unusable here: the
+                          # docker.io default is a non-writable namespace, and the
+                          # ghcr.io one uses the capitalized actor name (invalid —
+                          # docker repo names must be lowercase). Pick "Enter custom
+                          # image reference" (type-filter "custom") so the next
+                          # prompt takes our exact lowercase DEPLOY_IMAGE_REF.
+                          os.write(master_fd, b"custom\r")
                           sent_registry = True
 
                       # If a push still fails and eigenx offers another registry,
