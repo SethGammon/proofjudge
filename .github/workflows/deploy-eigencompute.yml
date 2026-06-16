@@ -123,12 +123,10 @@ jobs:
           )
           os.close(slave_fd)
 
-          deadline = time.monotonic() + (45 * 60)
-          answered_confirmations = set()
+          deadline = time.monotonic() + (12 * 60)
           sent_registry = False
           sent_target = False
-          last_cursor_reply = 0.0
-          last_retry = 0.0
+          last_yn_answer = 0.0
           transcript = ""
           target_ref = os.environ["DEPLOY_IMAGE_REF"]
 
@@ -154,44 +152,13 @@ jobs:
                       sys.stdout.flush()
                       transcript = (transcript + text)[-4000:]
 
-                      if "\x1b[6n" in transcript:
-                          now = time.monotonic()
-                          if now - last_cursor_reply > 0.2:
-                              os.write(master_fd, b"\x1b[1;1R")
-                              last_cursor_reply = now
+                      # Answer every cursor-position probe (\x1b[6n) survey emits,
+                      # once per probe in THIS chunk. These CPRs satisfy a prompt's
+                      # handshake and must NEVER be glued to the y/N answer.
+                      for _ in range(text.count("\x1b[6n")):
+                          os.write(master_fd, b"\x1b[1;1R")
 
                       lower = transcript.lower()
-
-                      confirmation_prompts = {
-                          "layer": "layer the image with eigenx components",
-                          "env": "is this categorization correct",
-                          # Mainnet on-chain cost confirmation: "Upgrade app with
-                          # image: ... (max cost: N ETH)" -> "Continue? (y/N)".
-                          # With no handler the code job hung here until the
-                          # 45-min timeout (exit 124).
-                          "continue": "continue?",
-                      }
-
-                      # Re-arm a confirmation whose answer eigenx rejected (e.g. a
-                      # keystroke was eaten) so it gets a fresh, CLEAN "y". The old
-                      # shim sprayed "\x1b[1;1Ry\r" — a synthetic cursor report glued
-                      # to the answer — which this prompt read as the literal "1Ry"
-                      # and refused forever. Cursor probes are answered separately;
-                      # answers stay bare. Scope to what's currently on screen so a
-                      # stale earlier prompt isn't re-answered into the wrong reader.
-                      recent = transcript[-400:].lower()
-                      if "is not a valid answer" in recent or "please try again" in recent:
-                          now = time.monotonic()
-                          if now - last_retry > 1.0:
-                              for prompt_name, prompt_text in confirmation_prompts.items():
-                                  if prompt_text in recent:
-                                      answered_confirmations.discard(prompt_name)
-                              last_retry = now
-
-                      for prompt_name, prompt_text in confirmation_prompts.items():
-                          if prompt_name not in answered_confirmations and prompt_text in lower:
-                              os.write(master_fd, b"y\r")
-                              answered_confirmations.add(prompt_name)
 
                       if not sent_registry and "select image destination" in lower:
                           os.write(master_fd, b"\r")
@@ -209,6 +176,19 @@ jobs:
                           sent_target = True
                   elif proc.poll() is not None:
                       break
+
+              # eigenx's y/N confirmations — env categorization "(y/N)" and the
+              # mainnet "Continue? (y/N)" cost confirm — both take "y". survey
+              # flushes stdin before it starts reading, so a single early keystroke
+              # is lost; re-send a CLEAN "y\r" every 0.5s while a y/N prompt is on
+              # screen, until it's accepted and scrolls off. Bare "y" only — never
+              # prefix a cursor report (that made the cost prompt read "1Ry").
+              recent = transcript[-200:].lower()
+              if "(y/n)" in recent and "different registry" not in recent:
+                  now = time.monotonic()
+                  if now - last_yn_answer > 0.5:
+                      os.write(master_fd, b"y\r")
+                      last_yn_answer = now
 
               if proc.poll() is not None:
                   break
