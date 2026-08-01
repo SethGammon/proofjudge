@@ -9,6 +9,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "smoke": "tsx scripts/smoke.ts",
+    "live:check": "node scripts/live-readiness.mjs",
+    "live:verify": "node scripts/live-readiness.mjs --deep",
     "check": "npm run build && npm run smoke"
   },
   "dependencies": {

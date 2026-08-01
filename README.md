@@ -9,7 +9,7 @@
 *Agents are deciding who gets paid. Who verifies the judge?*
 
 [![Built on EigenCompute](https://img.shields.io/badge/built%20on-EigenCompute-3ddc8a?style=flat-square&labelColor=0a0f16)](https://www.eigencloud.xyz/)
-[![Four judges live](https://img.shields.io/badge/judges%20live-4-3ddc8a?style=flat-square&labelColor=0a0f16)](#the-four-judges)
+[![Live readiness](https://github.com/SethGammon/proofjudge/actions/workflows/live-readiness.yml/badge.svg)](https://github.com/SethGammon/proofjudge/actions/workflows/live-readiness.yml)
 [![Signing](https://img.shields.io/badge/signing-HMAC--SHA256-e7e1d0?style=flat-square&labelColor=0a0f16)](#the-trust-boundary-stated-honestly)
 [![Stack](https://img.shields.io/badge/stack-Express%20%2B%20vanilla%20JS-e7e1d0?style=flat-square&labelColor=0a0f16)](#run-it-locally)
 
@@ -41,6 +41,17 @@ One proof machine, deployed four times on EigenCompute, each under its own inspe
 | `▲` | **Governance** | Proposals verified before votes are cast | [34.87.56.225:3000](http://34.87.56.225:3000) | [EigenVerify ↗](https://verify.eigencloud.xyz/app/0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94) |
 
 Open any console and hit **Watch the proof**. It plays itself: a real case is judged live, sealed, re-verified, then broken in front of you. Touch anything to take the wheel.
+
+### Live readiness
+
+Cloud state alone is not treated as proof that a judge works. The public readiness check calls each deployment's health endpoint, variant catalog, and guided demo. Deep verification also creates a real signed receipt and sends it back through `/api/verify`.
+
+```bash
+npm run live:check   # bounded public readiness check
+npm run live:verify  # judge + sign + verify on all four deployments
+```
+
+**Last deep verification:** 2026-08-01. All four public judges passed health, demo, live judgment, receipt signing, and verification. The scheduled badge above reruns the bounded readiness check every six hours.
 
 <div align="center">
 <img src="docs/media/console.png" alt="The ProofJudge console: one settlement layer, four sitting judges" width="780" />
