@@ -7,7 +7,7 @@
   "workers_dev": true,
   "preview_urls": false,
   "vars": {
-    "ORIGIN_BASE_URL": "http://35.204.155.165:3000"
+    "ORIGIN_BASE_URL": "http://35-204-155-165.sslip.io:3000"
   },
   "observability": {
     "enabled": true,
