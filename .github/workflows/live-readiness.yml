@@ -1,5 +1,9 @@
 name: Live readiness
 
+permissions:
+  contents: read
+  issues: write
+
 on:
   schedule:
     - cron: "17 */6 * * *"
@@ -15,9 +19,55 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Check every public judge
-        run: node scripts/live-readiness.mjs
+        id: initial
+        continue-on-error: true
+        run: node scripts/live-readiness.mjs --json > initial-readiness.json
+
+      - name: Restart only confirmed Exited apps
+        if: steps.initial.outcome == 'failure'
+        continue-on-error: true
+        env:
+          ECLOUD_PRIVATE_KEY: ${{ secrets.EIGENX_PRIVATE_KEY }}
+        run: node scripts/recover-exited.mjs initial-readiness.json --apply
+
+      - name: Recheck after bounded recovery
+        id: final
+        if: steps.initial.outcome == 'failure'
+        continue-on-error: true
+        run: node scripts/live-readiness.mjs --json > final-readiness.json
+
+      - name: Preserve the healthy result
+        if: steps.initial.outcome == 'success'
+        run: cp initial-readiness.json final-readiness.json
+
+      - name: Open or update readiness incident
+        if: steps.initial.outcome == 'failure' && steps.final.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/readiness-issue-body.mjs final-readiness.json recovery-report.json
+          ISSUE_NUMBER=$(gh issue list --state open --search '"[monitor] ProofJudge public readiness failed" in:title' --json number --jq '.[0].number')
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh issue edit "$ISSUE_NUMBER" --body-file readiness-issue.md
+          else
+            gh issue create --title "[monitor] ProofJudge public readiness failed" --body-file readiness-issue.md
+          fi
+
+      - name: Close recovered readiness incident
+        if: steps.initial.outcome == 'success' || steps.final.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUMBER=$(gh issue list --state open --search '"[monitor] ProofJudge public readiness failed" in:title' --json number --jq '.[0].number')
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh issue close "$ISSUE_NUMBER" --comment "Scheduled readiness is healthy again."
+          fi
+
+      - name: Fail when readiness remains unhealthy
+        if: steps.initial.outcome == 'failure' && steps.final.outcome == 'failure'
+        run: exit 1

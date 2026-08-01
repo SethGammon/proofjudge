@@ -48,8 +48,8 @@
               <span class="btn-stack"><b>Open the console</b><small>drive it yourself</small></span>
             </button>
           </div>
-          <div class="threshold-judges" role="group" aria-label="Four live judges">
-            <span class="threshold-judges-label">Four judges live on EigenCompute — pick one to open its console</span>
+          <div class="threshold-judges" role="group" aria-label="Four deployed judges">
+            <span class="threshold-judges-label" id="deployment-status-label">Four judges deployed on EigenCompute · checking reachability…</span>
             <div class="threshold-judge-row">
               <button type="button" class="judge-chip" data-entry-judge="code"><i></i>Code</button>
               <button type="button" class="judge-chip" data-entry-judge="research"><i></i>Research</button>
@@ -75,7 +75,7 @@
               <div><dt>Case</dt><dd>PJ-C-1042 · OAuth callback hardening</dd></div>
               <div><dt>Score</dt><dd>92 / 100 · 88% confidence</dd></div>
               <div><dt>Artifact hash</dt><dd class="mono">7c1b08c4…e1a9</dd></div>
-              <div><dt>Signature</dt><dd class="mono">HMAC-SHA256 · 41f2c0aa…77be</dd></div>
+              <div><dt>Signature</dt><dd class="mono">Ed25519 · MEUCIQD…77be</dd></div>
               <div><dt>Judge identity</dt><dd class="mono">0xd36476…e5aC0</dd></div>
             </dl>
             <div class="paper-foot">
@@ -224,7 +224,7 @@
               <li class="pipe-step" data-step="1"><i></i><div><b>Apply rubric</b><small>score each criterion</small></div></li>
               <li class="pipe-step" data-step="2"><i></i><div><b>Collect evidence</b><small>keep the working notes</small></div></li>
               <li class="pipe-step" data-step="3"><i></i><div><b>Seal artifact</b><small>freeze the record</small></div></li>
-              <li class="pipe-step" data-step="4"><i></i><div><b>Sign receipt</b><small>HMAC-SHA256</small></div></li>
+              <li class="pipe-step" data-step="4"><i></i><div><b>Sign receipt</b><small>Ed25519 public-key signature</small></div></li>
             </ol>
 
             <div class="findings" id="findings"></div>
@@ -363,7 +363,7 @@
               <ul>
                 <li>That the verdict is objectively correct</li>
                 <li>That the rubric itself was wise</li>
-                <li>Offline third-party HMAC validation (service-verifiable today)</li>
+                <li>That a valid signature makes the verdict objectively correct</li>
               </ul>
             </div>
           </section>

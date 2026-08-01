@@ -96,6 +96,7 @@ let tamperedView = false;
 let stationOpen = false;
 let judgedCases = {};
 let runtimeOnline = null;
+let deploymentStatuses = null;
 let variantConfigs = {};
 
 /* ────────────────────────────── refs ──────────────────────────────────── */
@@ -114,6 +115,7 @@ const refs = {
   watchProofBtn: $("watch-proof-btn"),
   enterConsoleBtn: $("enter-console-btn"),
   tickerTrack: $("ticker-track"),
+  deploymentStatusLabel: $("deployment-status-label"),
 
   runtimePill: $("runtime-pill"),
   headerVerifyLink: $("header-verify-link"),
@@ -647,6 +649,7 @@ function resetPipeline() {
 function renderReceipt(artifact, options = {}) {
   currentArtifact = artifact;
   tamperedView = false;
+  const decision = safeDecision(artifact.decision);
   const app = APP_REGISTRY[artifact.agent?.variant] ?? APP_REGISTRY[currentJudge];
   const appId = artifact.deploymentIdentity?.appId || app.appId;
   const settlement = artifact.settlementRecommendation;
@@ -654,8 +657,8 @@ function renderReceipt(artifact, options = {}) {
   refs.receipt.hidden = false;
   refs.receiptBanner.hidden = true;
   refs.receiptJudge.textContent = `${artifact.agent?.name ?? "Decision"} · receipt`;
-  refs.receiptVerdictBlock.className = `paper-verdict ${artifact.decision}`;
-  refs.receiptVerdict.textContent = VERDICT_LABELS[artifact.decision] ?? artifact.decision.toUpperCase();
+  refs.receiptVerdictBlock.className = `paper-verdict ${decision}`;
+  refs.receiptVerdict.textContent = VERDICT_LABELS[decision] ?? decision.toUpperCase();
   refs.receiptAction.textContent = SETTLEMENT_LABELS[settlement.action] ?? settlement.action;
   refs.receiptActionNote.textContent = settlement.note;
   refs.receiptCase.textContent = `${artifact.taskId}`;
@@ -840,8 +843,8 @@ function renderVerifyReadout(target, verification, artifact, options = {}) {
       <div class="tamper-compare">
         <div><span>Original score</span><strong>${options.compare.originalScore} / 100</strong></div>
         <div><span>Edited score</span><strong class="bad">${options.compare.tamperedScore} / 100</strong></div>
-        <div><span>Embedded hash</span><strong>${shortHash(options.compare.embedded)}</strong></div>
-        <div><span>Recomputed hash</span><strong class="bad">${shortHash(options.compare.recomputed)}</strong></div>
+        <div><span>Embedded hash</span><strong>${esc(shortHash(options.compare.embedded))}</strong></div>
+        <div><span>Recomputed hash</span><strong class="bad">${esc(shortHash(options.compare.recomputed))}</strong></div>
       </div>`
     : "";
 
@@ -916,13 +919,14 @@ function renderArchive() {
         ${archive
           .map((record, index) => {
             const a = record.artifact;
+            const decision = safeDecision(a.decision);
             return `
             <tr>
               <td>${esc(formatTime(a.timestamp))}</td>
               <td>${esc(APP_REGISTRY[a.agent.variant]?.label ?? a.agent.variant)}</td>
-              <td><span class="table-verdict ${a.decision}">${VERDICT_LABELS[a.decision] ?? a.decision}</span></td>
+              <td><span class="table-verdict ${decision}">${esc(VERDICT_LABELS[decision] ?? decision)}</span></td>
               <td>${esc(SETTLEMENT_LABELS[a.settlementRecommendation.action] ?? a.settlementRecommendation.action)}</td>
-              <td class="mono">${shortHash(a.decisionArtifactHash)}</td>
+              <td class="mono">${esc(shortHash(a.decisionArtifactHash))}</td>
               <td><button class="btn btn-quiet btn-compact" type="button" data-load-receipt="${index}">Load</button></td>
             </tr>`;
           })
@@ -963,7 +967,7 @@ function renderStation() {
     <span><b>4</b> deployed judges</span>
     ${runtimeStat}
     <span><b>${archive.length}</b> receipt${archive.length === 1 ? "" : "s"} sealed here</span>
-    <span><b>HMAC-SHA256</b> signing</span>
+    <span><b>Ed25519</b> public-key signing</span>
   `;
 
   /* cartridge cards */
@@ -971,10 +975,12 @@ function renderStation() {
     .map(([judge, app]) => {
       const live = variantConfigs[judge];
       const meta = STATION_META[judge];
+      const status = deploymentStatuses?.deployments?.find((deployment) => deployment.variant === judge);
       const tagline = live?.tagline ?? meta.tagline;
       const lastRecord = archive.find((r) => r.artifact.agent.variant === judge);
+      const lastDecision = lastRecord ? safeDecision(lastRecord.artifact.decision) : null;
       const lastVerdict = lastRecord
-        ? `<span class="table-verdict ${lastRecord.artifact.decision}">${VERDICT_LABELS[lastRecord.artifact.decision]}</span>`
+        ? `<span class="table-verdict ${lastDecision}">${esc(VERDICT_LABELS[lastDecision] ?? lastDecision)}</span>`
         : "none yet";
       return `
       <button type="button" class="judge-cartridge" data-station-judge="${judge}">
@@ -985,6 +991,7 @@ function renderStation() {
         <p class="jc-problem">${esc(live?.problemStatement ?? meta.problem)}</p>
         <dl class="jc-rows">
           <div><dt>App ID</dt><dd>${shortAddress(app.appId)}</dd></div>
+          <div><dt>Reachability</dt><dd>${status ? (status.reachable ? "reachable now" : "unreachable now") : "checking…"}</dd></div>
           <div><dt>Docket</dt><dd>${CASE_LIBRARY[judge].length} case files</dd></div>
           <div><dt>Last verdict</dt><dd>${lastVerdict}</dd></div>
         </dl>
@@ -1007,13 +1014,14 @@ function renderStation() {
     .slice(0, 5)
     .map((record, index) => {
       const a = record.artifact;
+      const decision = safeDecision(a.decision);
       return `
       <button type="button" class="recent-row" data-recent-receipt="${index}">
         <span class="rr-time">${esc(formatTime(a.timestamp))}</span>
         <span class="rr-judge">${esc(APP_REGISTRY[a.agent.variant]?.label ?? a.agent.variant)}</span>
-        <span class="table-verdict ${a.decision}">${VERDICT_LABELS[a.decision] ?? a.decision}</span>
+        <span class="table-verdict ${decision}">${esc(VERDICT_LABELS[decision] ?? decision)}</span>
         <span>${esc(SETTLEMENT_LABELS[a.settlementRecommendation.action] ?? a.settlementRecommendation.action)}</span>
-        <span class="rr-hash">${shortHash(a.decisionArtifactHash)}</span>
+        <span class="rr-hash">${esc(shortHash(a.decisionArtifactHash))}</span>
         <span class="rr-open">load on desk →</span>
       </button>`;
     })
@@ -1139,7 +1147,7 @@ const STAGE_ACTS = [
     id: "receipt",
     kicker: "the receipt",
     line: "The verdict prints as a signed receipt.",
-    sub: "Verdict, settlement action, hashes, judge identity — locked under an HMAC-SHA256 signature.",
+    sub: "Verdict, settlement action, hashes, and judge identity are locked under an Ed25519 public-key signature.",
     nextLabel: "Verify it →",
     autoMs: 5600
   },
@@ -1589,14 +1597,14 @@ async function renderActJudgment(token) {
     ["Apply the rubric", "criterion by criterion"],
     ["Collect the evidence", "working notes kept"],
     ["Seal the artifact", "record frozen"],
-    ["Sign the receipt", "HMAC-SHA256"]
+    ["Sign the receipt", "Ed25519"]
   ];
   refs.stageCanvas.innerHTML = `
     <div class="act act-judgment">
       <div class="aj-identity">
         <div><span>Runtime</span><strong>EigenCompute · attested TEE</strong></div>
         <div><span>Judge identity</span><strong class="mono">${shortAddress(app.appId)}</strong></div>
-        <div><span>Signing</span><strong>HMAC-SHA256</strong></div>
+        <div><span>Signing</span><strong>Ed25519 public-key signature</strong></div>
       </div>
       <div class="aj-pipeline">
         ${steps.map(([b, s], i) => `<div class="aj-step" data-aj="${i}"><i></i><b>${b}</b><small>${s}</small></div>`).join("")}
@@ -1671,6 +1679,7 @@ async function renderActJudgment(token) {
 function stagePaperHTML(options = {}) {
   const artifact = stage.artifact;
   if (!artifact) return "";
+  const decision = safeDecision(artifact.decision);
   const settlement = artifact.settlementRecommendation;
   const scoreText = options.scoreText ?? `${artifact.score} / 100 · ${artifact.confidence}% confidence`;
   const banner = options.banner
@@ -1683,9 +1692,9 @@ function stagePaperHTML(options = {}) {
         <span class="paper-brand">ProofJudge</span>
         <span class="paper-doc">${esc(artifact.agent.name)} · receipt</span>
       </header>
-      <div class="paper-verdict ${artifact.decision}">
+      <div class="paper-verdict ${decision}">
         <small>Verdict</small>
-        <strong>${VERDICT_LABELS[artifact.decision] ?? artifact.decision}</strong>
+        <strong>${esc(VERDICT_LABELS[decision] ?? decision)}</strong>
         <span>${esc(SETTLEMENT_LABELS[settlement.action] ?? settlement.action)}</span>
       </div>
       <p class="paper-note action-note">${esc(settlement.note)}</p>
@@ -1693,10 +1702,10 @@ function stagePaperHTML(options = {}) {
         <div><dt>Case</dt><dd>${esc(artifact.taskId)}</dd></div>
         <div data-row="score" class="${options.broken ? "broken" : ""}"><dt>Score</dt><dd id="stage-score">${scoreText}</dd></div>
         <div><dt>Submitter</dt><dd>${esc(artifact.submitter || "anonymous")}</dd></div>
-        <div><dt>Input hash</dt><dd class="mono">${shortHash(artifact.submittedArtifactHash)}</dd></div>
-        <div><dt>Artifact hash</dt><dd class="mono">${shortHash(artifact.decisionArtifactHash)}</dd></div>
-        <div><dt>Signature</dt><dd class="mono">${artifact.signature.algorithm} · ${shortHash(artifact.signature.value)}</dd></div>
-        <div><dt>Judge identity</dt><dd class="mono">${shortAddress(artifact.deploymentIdentity?.appId)}</dd></div>
+        <div><dt>Input hash</dt><dd class="mono">${esc(shortHash(artifact.submittedArtifactHash))}</dd></div>
+        <div><dt>Artifact hash</dt><dd class="mono">${esc(shortHash(artifact.decisionArtifactHash))}</dd></div>
+        <div><dt>Signature</dt><dd class="mono">${esc(artifact.signature.algorithm)} · ${esc(shortHash(artifact.signature.value))}</dd></div>
+        <div><dt>Judge identity</dt><dd class="mono">${esc(shortAddress(artifact.deploymentIdentity?.appId))}</dd></div>
       </dl>
       <div class="paper-foot">
         <span class="paper-note">Signed inside EigenCompute.<br />Edit any field and verification fails.</span>
@@ -1971,6 +1980,18 @@ async function loadVariantConfigs() {
   if (stationOpen) renderStation();
 }
 
+async function loadDeploymentStatuses() {
+  try {
+    deploymentStatuses = await apiFetch("/api/deployments");
+    const { reachable, total } = deploymentStatuses;
+    refs.deploymentStatusLabel.textContent = `${reachable}/${total} deployed judges reachable now · measured ${formatTime(deploymentStatuses.measuredAt)}`;
+  } catch {
+    deploymentStatuses = null;
+    refs.deploymentStatusLabel.textContent = "Four judges deployed on EigenCompute · live reachability unavailable";
+  }
+  if (stationOpen) renderStation();
+}
+
 /* ────────────────────────────── events ────────────────────────────────── */
 
 refs.watchProofBtn.addEventListener("click", () => startStage());
@@ -2193,6 +2214,10 @@ function shortAddress(value) {
   return text.startsWith("0x") && text.length > 14 ? `${text.slice(0, 8)}…${text.slice(-6)}` : text;
 }
 
+function safeDecision(value) {
+  return value === "pass" || value === "revise" || value === "fail" ? value : "fail";
+}
+
 function formatTime(value) {
   if (!value) return "—";
   const date = new Date(value);
@@ -2230,6 +2255,7 @@ function init() {
   route();
   pingRuntime();
   loadVariantConfigs();
+  loadDeploymentStatuses();
 }
 
 init();

@@ -7,8 +7,10 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "smoke": "tsx scripts/smoke.ts",
+    "receipt:verify": "tsx scripts/verify-receipt.ts",
+    "signing:provision": "node scripts/provision-signing-key.mjs",
     "live:check": "node scripts/live-readiness.mjs",
     "live:verify": "node scripts/live-readiness.mjs --deep",
     "check": "npm run build && npm run smoke"
@@ -17,13 +19,16 @@
     "@layr-labs/ai-gateway-provider": "^1.0.1",
     "ai": "^6.0.174",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.6.1",
+    "helmet": "^8.3.0",
     "nanoid": "^5.0.7",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260801.1",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.10",
-    "tsx": "^4.16.2",
+    "tsx": "^4.23.1",
     "typescript": "^5.5.3"
   }
 }

@@ -50,11 +50,16 @@ export interface DecisionArtifact {
   };
   modelMetadata: ModelMetadata;
   deploymentIdentity: DeploymentIdentity;
+  signingIdentity?: {
+    algorithm: "Ed25519";
+    keyId: string;
+    publicKey: string;
+  };
   timestamp: string;
   signature: {
-    algorithm: "HMAC-SHA256" | "DEMO-SHA256";
+    algorithm: "Ed25519" | "HMAC-SHA256" | "DEMO-SHA256";
     value: string;
-    mode: "signed" | "simulated";
+    mode: "asymmetric" | "signed" | "simulated";
   };
 }
 
@@ -65,6 +70,7 @@ export interface VerificationResult {
   verifiedAt: string;
   decisionArtifactHashMatch: boolean;
   signatureValid: boolean;
+  signerTrusted: boolean;
   checks: Array<{
     label: string;
     ok: boolean;

@@ -1,0 +1,19 @@
+{
+  "$schema": "../All About Me/System/CareerOS/node_modules/wrangler/config-schema.json",
+  "name": "proofjudge-demo",
+  "main": "edge/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "ORIGIN_BASE_URL": "http://35.204.155.165:3000"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    }
+  }
+}
