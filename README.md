@@ -10,7 +10,7 @@
 
 [![Built on EigenCompute](https://img.shields.io/badge/built%20on-EigenCompute-3ddc8a?style=flat-square&labelColor=0a0f16)](https://www.eigencloud.xyz/)
 [![Live readiness](https://github.com/SethGammon/proofjudge/actions/workflows/live-readiness.yml/badge.svg)](https://github.com/SethGammon/proofjudge/actions/workflows/live-readiness.yml)
-[![Signing](https://img.shields.io/badge/signing-HMAC--SHA256-e7e1d0?style=flat-square&labelColor=0a0f16)](#the-trust-boundary-stated-honestly)
+[![Signing](https://img.shields.io/badge/signing-Ed25519-e7e1d0?style=flat-square&labelColor=0a0f16)](#the-trust-boundary-stated-honestly)
 [![Stack](https://img.shields.io/badge/stack-Express%20%2B%20vanilla%20JS-e7e1d0?style=flat-square&labelColor=0a0f16)](#run-it-locally)
 
 [The four judges](#the-four-judges) · [How the proof works](#how-the-proof-works) · [Run it locally](#run-it-locally) · [API](#api) · [Trust boundary](#the-trust-boundary-stated-honestly)
@@ -18,6 +18,9 @@
 </div>
 
 ---
+
+**Canonical HTTPS demo:** [proofjudge-demo.proofjudge.workers.dev](https://proofjudge-demo.proofjudge.workers.dev)  
+The edge route is the stable browser entry. Judgment and signing still execute in the Research EigenCompute deployment, whose app identity remains embedded in every receipt.
 
 AI agents are starting to do paid work, and acceptance is the fragile part. Who judged the result? Was the verdict changed after the fact? Can anyone check it before money moves?
 
@@ -40,7 +43,7 @@ One proof machine, deployed four times on EigenCompute, each under its own inspe
 | `⇄` | **Negotiation** | Neutral ground; both parties can verify | [34.58.112.209:3000](http://34.58.112.209:3000) | [EigenVerify ↗](https://verify.eigencloud.xyz/app/0x2f751FcEC35D8afA6fbb2d3486443efcc6CC5322) |
 | `▲` | **Governance** | Proposals verified before votes are cast | [34.87.56.225:3000](http://34.87.56.225:3000) | [EigenVerify ↗](https://verify.eigencloud.xyz/app/0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94) |
 
-Open any console and hit **Watch the proof**. It plays itself: a real case is judged live, sealed, re-verified, then broken in front of you. Touch anything to take the wheel.
+Open the canonical HTTPS demo or any deployment console and hit **Watch the proof**. It plays itself: a real case is judged live, sealed, re-verified, then broken in front of you. Touch anything to take the wheel.
 
 ### Live readiness
 
@@ -51,7 +54,7 @@ npm run live:check   # bounded public readiness check
 npm run live:verify  # judge + sign + verify on all four deployments
 ```
 
-**Last deep verification:** 2026-08-01. All four public judges passed health, demo, live judgment, receipt signing, and verification. The scheduled badge above reruns the bounded readiness check every six hours.
+**Last deep verification:** 2026-08-01. All four public judges passed health, demo, live judgment, receipt signing, and verification. The scheduled badge above reruns the bounded readiness check every six hours, opens an incident on failure, and attempts one restart only when EigenCloud reports an exact `Exited` state.
 
 <div align="center">
 <img src="docs/media/console.png" alt="The ProofJudge console: one settlement layer, four sitting judges" width="780" />
@@ -67,7 +70,7 @@ npm run live:verify  # judge + sign + verify on all four deployments
         │  the judge   │    apply rubric       LLM via Eigen AI gateway
         │  (inside a   │    collect evidence   signals + reasoning trace
         │   TEE)       │    seal artifact      record frozen
-        └──────────────┘    sign receipt       HMAC-SHA256, in the enclave
+        └──────────────┘    sign receipt       Ed25519, in the enclave
                 │
                 ▼
       DecisionArtifact: verdict · score · settlement action
@@ -89,7 +92,7 @@ npm run dev          # http://localhost:3000
 npm run check        # build + smoke: "Smoke checks passed for all ProofJudge variants."
 ```
 
-Without EigenCompute credentials the judge runs in a clearly labeled deterministic demo mode. The crypto is still real: receipts are signed and tamper detection works exactly the same.
+Without EigenCompute credentials the judge runs in a clearly labeled deterministic demo mode. Hashing and the tamper-detection loop still work, but the receipt is marked simulated rather than attributed to a published ProofJudge signer.
 
 ## API
 
@@ -97,6 +100,7 @@ Without EigenCompute credentials the judge runs in a clearly labeled determinist
 |---|---|
 | `GET /healthz` | Service health |
 | `GET /api/variants` | Judge metadata for all four variants |
+| `GET /api/deployments` | Fresh, bounded reachability measurement for all four public judges |
 | `GET /api/demo/:variant` | Seeded demo inputs |
 | `POST /api/judge` | Judge a submission, returns a signed `DecisionArtifact` |
 | `POST /api/verify` | Re-verify any artifact: schema, hashes, signature, identity, attestation |
@@ -105,7 +109,13 @@ Without EigenCompute credentials the judge runs in a clearly labeled determinist
 
 Verification proves **which** deployed evaluator produced **which** decision record, under **which** rubric, and that nothing was altered afterward. It does not prove the verdict is objectively correct. ProofJudge makes AI judgment accountable, not infallible.
 
-Current signing is service-verifiable HMAC-SHA256: the deployed verifier confirms a receipt still matches its embedded signature. Offline third-party verification is the planned upgrade path (asymmetric signing, e.g. Ed25519).
+New deployed receipts use Ed25519 public-key signatures. Verification checks both the signature mathematics and whether the public key is in ProofJudge's published trust registry. The current signer fingerprint is `ed25519:b9cccedea909d831a23a55d4cc4676034148b071a00206eacc9ee9567049f07f`.
+
+Legacy HMAC and deterministic demo receipts remain readable for continuity. To verify a saved receipt without calling the service:
+
+```bash
+npm run receipt:verify -- path/to/receipt.json
+```
 
 ## More
 

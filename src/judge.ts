@@ -1,21 +1,106 @@
-import { createHash, createHmac } from "node:crypto";
+import {
+  createHash,
+  createHmac,
+  createPrivateKey,
+  createPublicKey,
+  sign as signBytes,
+  timingSafeEqual,
+  verify as verifyBytes
+} from "node:crypto";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { eigen } from "@layr-labs/ai-gateway-provider";
 import { generateText } from "ai";
 import type { AgentVariant, Decision, DecisionArtifact, JudgeRequest, VerificationResult } from "./types.js";
+import { trustedEd25519PublicKeys } from "./trusted-signing-keys.js";
 import { variants } from "./variants.js";
 
 export const judgeRequestSchema = z.object({
   variant: z.enum(["code", "research", "negotiation", "governance"]),
-  bountyDescription: z.string().min(10),
-  rubric: z.string().min(10),
-  submittedArtifact: z.string().min(10),
-  submitter: z.string().optional()
-});
+  bountyDescription: z.string().trim().min(10).max(12_000),
+  rubric: z.string().trim().min(10).max(12_000),
+  submittedArtifact: z.string().trim().min(10).max(120_000),
+  submitter: z.string().trim().max(200).optional()
+}).strict();
+
+const signingIdentitySchema = z.object({
+  algorithm: z.literal("Ed25519"),
+  keyId: z.string().regex(/^ed25519:[a-f0-9]{64}$/),
+  publicKey: z.string().min(40).max(200)
+}).strict();
+
+export const decisionArtifactSchema: z.ZodType<DecisionArtifact> = z.object({
+  schemaVersion: z.literal("proofjudge.decision.v1"),
+  taskId: z.string().min(1).max(100),
+  agent: z.object({
+    name: z.string().min(1).max(100),
+    variant: z.enum(["code", "research", "negotiation", "governance"])
+  }).strict(),
+  bountyDescription: z.string().max(12_000),
+  rubric: z.string().max(12_000),
+  submitter: z.string().max(200).optional(),
+  submittedArtifactHash: z.string().regex(/^[a-f0-9]{64}$/),
+  decisionArtifactHash: z.string().regex(/^[a-f0-9]{64}$/),
+  decision: z.enum(["pass", "fail", "revise"]),
+  score: z.number().int().min(0).max(100),
+  confidence: z.number().int().min(0).max(100),
+  evidenceChecked: z.array(z.string().max(2_000)).max(100),
+  reasoning: z.array(z.string().max(4_000)).max(100),
+  settlementRecommendation: z.object({
+    action: z.enum(["release-payment", "hold-for-revision", "reject-payment"]),
+    mode: z.literal("simulated"),
+    note: z.string().max(2_000)
+  }).strict(),
+  modelMetadata: z.object({
+    provider: z.string().max(200),
+    model: z.string().max(200),
+    mode: z.enum(["deterministic-demo", "llm"])
+  }).strict(),
+  deploymentIdentity: z.object({
+    appId: z.string().min(1).max(200),
+    instanceIp: z.string().min(1).max(200),
+    attestation: z.object({
+      mode: z.enum(["demo-placeholder", "eigencompute"]),
+      endpoint: z.string().url().max(2_000).optional(),
+      note: z.string().max(2_000)
+    }).strict()
+  }).strict(),
+  signingIdentity: signingIdentitySchema.optional(),
+  timestamp: z.string().datetime(),
+  signature: z.object({
+    algorithm: z.enum(["Ed25519", "HMAC-SHA256", "DEMO-SHA256"]),
+    value: z.string().min(32).max(512),
+    mode: z.enum(["asymmetric", "signed", "simulated"])
+  }).strict()
+}).strict();
 
 const normalize = (value: string) => value.toLowerCase();
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
+const publicKeyId = (publicKey: string) => `ed25519:${sha256(publicKey)}`;
+
+function safeEqual(left: string, right: string): boolean {
+  const leftBytes = Buffer.from(left);
+  const rightBytes = Buffer.from(right);
+  return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
+}
+
+function configuredSigningIdentity(): DecisionArtifact["signingIdentity"] | undefined {
+  const privateKeyValue = process.env.PROOFJUDGE_ED25519_PRIVATE_KEY;
+  if (!privateKeyValue) return undefined;
+
+  const privateKey = createPrivateKey({
+    key: Buffer.from(privateKeyValue, "base64"),
+    format: "der",
+    type: "pkcs8"
+  });
+  const publicKey = createPublicKey(privateKey).export({ format: "der", type: "spki" }).toString("base64");
+  const configuredPublicKey = process.env.PROOFJUDGE_ED25519_PUBLIC_KEY;
+  if (configuredPublicKey && !safeEqual(publicKey, configuredPublicKey)) {
+    throw new Error("Configured Ed25519 public key does not match the private signing key.");
+  }
+
+  return { algorithm: "Ed25519", keyId: publicKeyId(publicKey), publicKey };
+}
 
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -37,6 +122,14 @@ interface ScoringResult {
   mode: "heuristic" | "llm";
   model: string;
 }
+
+const modelScoringSchema = z.object({
+  score: z.coerce.number().finite().min(0).max(100),
+  decision: z.enum(["pass", "revise", "fail"]).optional(),
+  confidence: z.coerce.number().finite().min(35).max(95).default(65),
+  evidenceChecked: z.array(z.string().trim().min(1).max(1_000)).min(1).max(20),
+  reasoning: z.array(z.string().trim().min(1).max(2_000)).min(1).max(20)
+}).strict();
 
 // ── Per-variant LLM system prompts ────────────────────────────────────────────
 
@@ -164,16 +257,16 @@ async function scoreWithLLM(request: JudgeRequest): Promise<ScoringResult> {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error(`LLM returned non-JSON response: ${text.slice(0, 200)}`);
 
-  const parsed = JSON.parse(jsonMatch[0]);
-  const rawScore = Math.max(0, Math.min(100, Number(parsed.score) || 0));
+  const parsed = modelScoringSchema.parse(JSON.parse(jsonMatch[0]));
+  const rawScore = Math.round(parsed.score);
   const decision: Decision = rawScore >= 72 ? "pass" : rawScore >= 42 ? "revise" : "fail";
 
   return {
     score: rawScore,
     decision,
-    confidence: Math.max(35, Math.min(95, Number(parsed.confidence) || 65)),
-    evidenceChecked: Array.isArray(parsed.evidenceChecked) ? parsed.evidenceChecked : ["bounty description", "acceptance rubric", "submitted artifact"],
-    reasoning: Array.isArray(parsed.reasoning) ? parsed.reasoning : [String(parsed.reasoning || "No reasoning provided.")],
+    confidence: Math.round(parsed.confidence),
+    evidenceChecked: parsed.evidenceChecked,
+    reasoning: parsed.reasoning,
     mode: "llm",
     model: modelId
   };
@@ -227,6 +320,24 @@ function settlementRecommendation(decision: Decision): DecisionArtifact["settlem
 
 function signArtifact(payload: Omit<DecisionArtifact, "signature">): DecisionArtifact["signature"] {
   const body = stableStringify(payload);
+  if (payload.signingIdentity?.algorithm === "Ed25519") {
+    const privateKeyValue = process.env.PROOFJUDGE_ED25519_PRIVATE_KEY;
+    if (!privateKeyValue) throw new Error("Ed25519 signing identity is present but no private signing key is configured.");
+    const privateKey = createPrivateKey({
+      key: Buffer.from(privateKeyValue, "base64"),
+      format: "der",
+      type: "pkcs8"
+    });
+    const derivedPublicKey = createPublicKey(privateKey).export({ format: "der", type: "spki" }).toString("base64");
+    if (!safeEqual(derivedPublicKey, payload.signingIdentity.publicKey)) {
+      throw new Error("Ed25519 signing identity does not match the configured private key.");
+    }
+    return {
+      algorithm: "Ed25519",
+      value: signBytes(null, Buffer.from(body), privateKey).toString("base64"),
+      mode: "asymmetric"
+    };
+  }
   const key = process.env.PROOFJUDGE_SIGNING_KEY;
   if (key) {
     return { algorithm: "HMAC-SHA256", value: createHmac("sha256", key).update(body).digest("hex"), mode: "signed" };
@@ -239,6 +350,7 @@ function signArtifact(payload: Omit<DecisionArtifact, "signature">): DecisionArt
 export async function createDecisionArtifact(request: JudgeRequest): Promise<DecisionArtifact> {
   const result = await scoreSubmission(request);
   const config = variants[request.variant];
+  const signingIdentity = configuredSigningIdentity();
 
   const base = {
     schemaVersion: "proofjudge.decision.v1" as const,
@@ -260,6 +372,7 @@ export async function createDecisionArtifact(request: JudgeRequest): Promise<Dec
       mode: result.mode === "llm" ? "llm" as const : "deterministic-demo" as const
     },
     deploymentIdentity: deploymentIdentity(),
+    ...(signingIdentity ? { signingIdentity } : {}),
     timestamp: new Date().toISOString()
   };
 
@@ -267,12 +380,58 @@ export async function createDecisionArtifact(request: JudgeRequest): Promise<Dec
   return { ...unsigned, signature: signArtifact(unsigned) };
 }
 
-export function verifyDecisionArtifact(artifact: DecisionArtifact): VerificationResult {
+export function verifyDecisionArtifact(
+  artifact: DecisionArtifact,
+  options: { trustedPublicKeys?: readonly string[] } = {}
+): VerificationResult {
   const { signature, decisionArtifactHash, ...base } = artifact;
   const recomputedDecisionArtifactHash = sha256(stableStringify(base));
-  const expectedSignature = signArtifact({ ...base, decisionArtifactHash });
   const hashOk = decisionArtifactHash === recomputedDecisionArtifactHash;
-  const signatureOk = signature.value === expectedSignature.value && signature.algorithm === expectedSignature.algorithm;
+  const signedBody = stableStringify({ ...base, decisionArtifactHash });
+  const configuredPublicKey = process.env.PROOFJUDGE_ED25519_PUBLIC_KEY;
+  const trustedPublicKeys = new Set([
+    ...trustedEd25519PublicKeys,
+    ...(configuredPublicKey ? [configuredPublicKey] : []),
+    ...(options.trustedPublicKeys ?? [])
+  ]);
+
+  let signatureOk = false;
+  let signerTrusted = false;
+  let signatureDetail = "Signature algorithm or signing identity is invalid.";
+  if (signature.algorithm === "Ed25519" && artifact.signingIdentity?.algorithm === "Ed25519") {
+    const identity = artifact.signingIdentity;
+    const identityOk = identity.keyId === publicKeyId(identity.publicKey);
+    signerTrusted = identityOk && trustedPublicKeys.has(identity.publicKey);
+    try {
+      const publicKey = createPublicKey({
+        key: Buffer.from(identity.publicKey, "base64"),
+        format: "der",
+        type: "spki"
+      });
+      signatureOk = identityOk && verifyBytes(null, Buffer.from(signedBody), publicKey, Buffer.from(signature.value, "base64"));
+    } catch {
+      signatureOk = false;
+    }
+    signatureDetail = signatureOk
+      ? "Ed25519 signature is mathematically valid for this receipt body."
+      : "Ed25519 signature does not match this receipt body.";
+  } else if (signature.algorithm === "HMAC-SHA256") {
+    const key = process.env.PROOFJUDGE_SIGNING_KEY;
+    if (key) {
+      const expected = createHmac("sha256", key).update(signedBody).digest("hex");
+      signatureOk = safeEqual(signature.value, expected);
+      signerTrusted = signatureOk;
+      signatureDetail = signatureOk
+        ? "Legacy service HMAC verified with the configured shared key."
+        : "Legacy HMAC does not match this receipt body.";
+    }
+  } else if (signature.algorithm === "DEMO-SHA256") {
+    signatureOk = safeEqual(signature.value, sha256(`demo:${signedBody}`));
+    signerTrusted = signatureOk;
+    signatureDetail = signatureOk
+      ? "Deterministic demo seal matches this receipt body."
+      : "Deterministic demo seal does not match this receipt body.";
+  }
   const schemaOk = artifact.schemaVersion === "proofjudge.decision.v1";
   const submittedHashOk = /^[a-f0-9]{64}$/.test(artifact.submittedArtifactHash);
   const deploymentOk = Boolean(artifact.deploymentIdentity.appId && artifact.deploymentIdentity.instanceIp);
@@ -281,7 +440,16 @@ export function verifyDecisionArtifact(artifact: DecisionArtifact): Verification
     { label: "Schema", ok: schemaOk, detail: schemaOk ? "Decision artifact schema is recognized." : "Unexpected decision artifact schema." },
     { label: "Submitted artifact hash", ok: submittedHashOk, detail: submittedHashOk ? "Submitted artifact hash is a valid SHA-256 digest." : "Submitted artifact hash is malformed." },
     { label: "Decision artifact hash", ok: hashOk, detail: hashOk ? "Decision artifact hash matches the artifact body." : "Decision artifact hash does not match — artifact was modified after signing." },
-    { label: "Signature", ok: signatureOk, detail: signatureOk ? `Signature verified in ${signature.mode} mode.` : "Signature does not match this artifact body — tamper detected." },
+    { label: "Signature", ok: signatureOk, detail: signatureDetail },
+    {
+      label: "Signer trust",
+      ok: signerTrusted,
+      detail: signerTrusted
+        ? artifact.signingIdentity
+          ? `Signer ${artifact.signingIdentity.keyId} is in the published ProofJudge trust registry.`
+          : "Legacy service seal was verified by the configured ProofJudge service."
+        : "The signature may be mathematically valid, but its public key is not in the ProofJudge trust registry."
+    },
     { label: "Deployment identity", ok: deploymentOk, detail: deploymentOk ? `${artifact.deploymentIdentity.appId} at ${artifact.deploymentIdentity.instanceIp}.` : "Deployment identity fields are missing." },
     {
       label: "Attestation status",
@@ -302,6 +470,7 @@ export function verifyDecisionArtifact(artifact: DecisionArtifact): Verification
     verifiedAt: new Date().toISOString(),
     decisionArtifactHashMatch: hashOk,
     signatureValid: signatureOk,
+    signerTrusted,
     checks,
     recomputedDecisionArtifactHash
   };

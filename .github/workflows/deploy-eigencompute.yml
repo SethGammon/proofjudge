@@ -1,7 +1,5 @@
 name: Deploy to EigenCompute
 
-# Manually triggered: upgrades the live judges to a fresh image in-place,
-# preserving each app's identity (app ID / EigenVerify link / IP).
 on:
   workflow_dispatch:
     inputs:
@@ -10,21 +8,9 @@ on:
         type: choice
         options: [all, code, research, negotiation, governance]
         default: all
-      image:
-        description: Image reference
-        default: ghcr.io/sethgammon/proofjudge:latest
-      build_mode:
-        description: "dockerfile = eigenx builds from Dockerfile; prebuilt = layer the already-built image (original redeploy.ps1 method)"
-        type: choice
-        options: [dockerfile, prebuilt]
-        default: dockerfile
-
-env:
-  EIGENX_VERSION: v0.2.16
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   upgrade:
@@ -48,192 +34,34 @@ jobs:
             id: "0x07fB5013B8625af5059Dc1564a964dfBa80Fbd94"
             env_secret: ENV_GOVERNANCE
     steps:
-      - name: Checkout
+      - name: Checkout the public source commit
         if: inputs.app == 'all' || inputs.app == matrix.name
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Install eigenx CLI
-        if: inputs.app == 'all' || inputs.app == matrix.name
-        run: |
-          curl -sL "https://github.com/Layr-Labs/eigenx-cli/releases/download/${EIGENX_VERSION}/eigenx-cli-linux-amd64-${EIGENX_VERSION}.tar.gz" -o eigenx.tgz
-          tar xzf eigenx.tgz
-          BIN=$(find . -maxdepth 2 -name eigenx -type f | head -1)
-          sudo install "$BIN" /usr/local/bin/eigenx
-
-      - name: Log in to GHCR
-        if: inputs.app == 'all' || inputs.app == matrix.name
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-      - name: Upgrade ${{ matrix.name }} judge
+      - name: Upgrade ${{ matrix.name }} from public source
         if: inputs.app == 'all' || inputs.app == matrix.name
         env:
-          EIGENX_PRIVATE_KEY: ${{ secrets.EIGENX_PRIVATE_KEY }}
+          ECLOUD_PRIVATE_KEY: ${{ secrets.EIGENX_PRIVATE_KEY }}
           APP_ENV_FILE: ${{ secrets[matrix.env_secret] }}
           APP_ID: ${{ matrix.id }}
-          BUILD_MODE: ${{ inputs.build_mode }}
-          SOURCE_IMAGE: ${{ inputs.image }}
-          DEPLOY_IMAGE_REF: ${{ inputs.image }}-eigenx
         run: |
           trap 'rm -f app.env' EXIT
-          # Strip CR: a stray \r\n in the env secret survives into the values,
-          # and the eigenx TEE wrapper sources the env before the app starts —
-          # a CR in a value breaks that source step and the app exits (Failed),
-          # regardless of image. tr -d '\r' guarantees clean LF-only values.
           printf '%s' "$APP_ENV_FILE" | tr -d '\r' > app.env
-          while IFS='=' read -r name value; do
-            case "$name" in ''|\#*) continue ;; esac
-            if [ -n "$value" ]; then
-              echo "::add-mask::$value"
-            fi
-          done < app.env
-          # In prebuilt mode, remove the Dockerfile so eigenx skips its interactive
-          # "Choose deployment method:" Select prompt (which appears only when a
-          # Dockerfile is present and --dockerfile is not passed) and goes straight
-          # to deploying the existing image. The checkout is ephemeral in CI.
-          if [ "$BUILD_MODE" = "prebuilt" ]; then
-            rm -f Dockerfile
-            echo "prebuilt mode: removed Dockerfile -> eigenx deploys the existing image, no method prompt"
+          if ! grep -q '^PROOFJUDGE_ED25519_PRIVATE_KEY=.' app.env; then
+            echo "Deployment blocked: this environment secret has not been upgraded to Ed25519 signing."
+            exit 1
           fi
-          # eigenx (urfave/cli) stops flag parsing at the first positional arg —
-          # options must precede <app-id> <image_ref>. Env categorization still
-          # needs a TTY, so this pty shim answers that prompt and responds to
-          # cursor-position probes emitted by the prompt library.
-          python3 - <<'PY'
-          import os
-          import pty
-          import select
-          import signal
-          import subprocess
-          import sys
-          import time
-
-          # dockerfile mode: eigenx builds from Dockerfile, layers it, and pushes
-          #   the result to <image>-eigenx (the positional target).
-          # prebuilt mode (the original redeploy.ps1 method): eigenx layers the
-          #   already-built <image> (e.g. :latest from docker-publish) — no build;
-          #   the layered result is pushed to the target it prompts for (the shim
-          #   answers that with DEPLOY_IMAGE_REF).
-          mode = os.environ.get("BUILD_MODE", "dockerfile")
-          cmd = [
-              "eigenx", "app", "upgrade",
-              "--env-file", "app.env",
-              "--environment", "mainnet-alpha",
-              "--disable-telemetry",
-          ]
-          if mode == "dockerfile":
-              cmd += ["--dockerfile", "Dockerfile"]
-          # NOTE: the original working redeploy.ps1 passed NONE of the flags
-          # below. Forcing --log-visibility private causes a permission change
-          # mid-upgrade, and --resource-usage-monitoring enable adds a component;
-          # either can make the TEE release Fail. Use the safe defaults (public
-          # logs = no permission change; monitoring disabled) to match the
-          # known-good deploy. Keep --instance-type so we don't get a Select.
-          cmd += [
-              "--instance-type", "g1-standard-4t",
-              "--log-visibility", "public",
-              "--resource-usage-monitoring", "disable",
-              os.environ["APP_ID"],
-              os.environ["DEPLOY_IMAGE_REF"] if mode == "dockerfile" else os.environ["SOURCE_IMAGE"],
-          ]
-
-          master_fd, slave_fd = pty.openpty()
-          env = os.environ.copy()
-          env.setdefault("TERM", "xterm")
-          proc = subprocess.Popen(
-              cmd,
-              stdin=slave_fd,
-              stdout=slave_fd,
-              stderr=slave_fd,
-              env=env,
-              start_new_session=True,
-          )
-          os.close(slave_fd)
-
-          deadline = time.monotonic() + (12 * 60)
-          sent_registry = False
-          sent_decline = False
-          last_yn_answer = 0.0
-          last_target_send = 0.0
-          transcript = ""
-          target_ref = os.environ["DEPLOY_IMAGE_REF"]
-
-          while True:
-              if time.monotonic() > deadline:
-                  print("\nTimed out waiting for eigenx app upgrade.", file=sys.stderr)
-                  try:
-                      os.killpg(proc.pid, signal.SIGTERM)
-                  except ProcessLookupError:
-                      pass
-                  sys.exit(124)
-
-              ready, _, _ = select.select([master_fd], [], [], 0.2)
-              if master_fd in ready:
-                  try:
-                      data = os.read(master_fd, 4096)
-                  except OSError:
-                      data = b""
-
-                  if data:
-                      text = data.decode("utf-8", "replace")
-                      sys.stdout.write(text)
-                      sys.stdout.flush()
-                      transcript = (transcript + text)[-4000:]
-
-                      # Answer every cursor-position probe (\x1b[6n) survey emits,
-                      # once per probe in THIS chunk. These CPRs satisfy a prompt's
-                      # handshake and must NEVER be glued to the y/N answer.
-                      for _ in range(text.count("\x1b[6n")):
-                          os.write(master_fd, b"\x1b[1;1R")
-
-                      lower = transcript.lower()
-
-                      if not sent_registry and "select image destination" in lower:
-                          # The auto-suggested options are both unusable here: the
-                          # docker.io default is a non-writable namespace, and the
-                          # ghcr.io one uses the capitalized actor name (invalid —
-                          # docker repo names must be lowercase). Pick "Enter custom
-                          # image reference" (type-filter "custom") so the next
-                          # prompt takes our exact lowercase DEPLOY_IMAGE_REF.
-                          os.write(master_fd, b"custom\r")
-                          sent_registry = True
-
-                      # If a push still fails and eigenx offers another registry,
-                      # decline so the job fails fast instead of hanging to timeout.
-                      if not sent_decline and "different registry" in lower:
-                          os.write(master_fd, b"n\r")
-                          sent_decline = True
-
-                      # (the layered-target input prompt is answered resiliently
-                      # in the periodic section below, since survey can flush a
-                      # single early keystroke just like the y/N prompts.)
-                  elif proc.poll() is not None:
-                      break
-
-              # eigenx's y/N confirmations — env categorization "(y/N)" and the
-              # mainnet "Continue? (y/N)" cost confirm — both take "y". survey
-              # flushes stdin before it starts reading, so a single early keystroke
-              # is lost; re-send a CLEAN "y\r" every 0.5s while a y/N prompt is on
-              # screen, until it's accepted and scrolls off. Bare "y" only — never
-              # prefix a cursor report (that made the cost prompt read "1Ry").
-              recent = transcript[-200:].lower()
-              if "(y/n)" in recent and "different registry" not in recent:
-                  now = time.monotonic()
-                  if now - last_yn_answer > 0.5:
-                      os.write(master_fd, b"y\r")
-                      last_yn_answer = now
-
-              # Layered-target input prompt: re-send our exact ref until accepted.
-              # Stop once the next stage (categorization) shows, so a stray
-              # buffered ref can't land in a later prompt.
-              if ("enter image reference" in recent or "enter target image reference" in recent) and "categorization" not in recent:
-                  now = time.monotonic()
-                  if now - last_target_send > 1.5:
-                      os.write(master_fd, (target_ref + "\r").encode())
-                      last_target_send = now
-
-              if proc.poll() is not None:
-                  break
-
-          sys.exit(proc.returncode)
-          PY
+          npx --yes @layr-labs/ecloud-cli@1.0.0 compute app upgrade "$APP_ID" \
+            --environment mainnet-alpha \
+            --non-interactive \
+            --force \
+            --verifiable \
+            --repo "https://github.com/${GITHUB_REPOSITORY}.git" \
+            --commit "$GITHUB_SHA" \
+            --build-context . \
+            --build-dockerfile Dockerfile \
+            --env-file app.env \
+            --instance-type g1-standard-4t \
+            --log-visibility public \
+            --resource-usage-monitoring disable \
+            --watch-timeout 900
